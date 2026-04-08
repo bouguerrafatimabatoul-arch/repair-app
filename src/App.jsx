@@ -1,53 +1,103 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
+import TicketForm from './TicketForm'
+import translations from './translations'
+
+const languages = [
+  { code: 'en', label: 'EN' },
+  { code: 'fr', label: 'FR' },
+  { code: 'ar', label: 'ع' },
+]
 
 export default function App() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [lang, setLang] = useState('fr')
+  const [matriculeBac, setMatriculeBac] = useState('')
+  const [anneeBac, setAnneeBac] = useState('')
   const [message, setMessage] = useState('')
+  const [student, setStudent] = useState(null)
+
+  const t = translations[lang]
 
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setMessage(error.message)
-    else setMessage('Logged in!')
+    setMessage('')
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('Matricule de Bac', matriculeBac)
+      .eq('Annee de Bac', parseInt(anneeBac))
+      .single()
+
+    if (error || !data) {
+      setMessage(t.loginError)
+      return
+    }
+    setStudent(data)
   }
 
-  const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) setMessage(error.message)
-    else setMessage('Account created! You can now log in.')
+  if (student) {
+    return (
+      <TicketForm
+        student={student}
+        onLogout={() => setStudent(null)}
+        lang={lang}
+        setLang={setLang}
+        t={t}
+      />
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div dir={t.dir} className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-2">🔧 Repair Requests</h1>
-        <p className="text-gray-500 text-sm mb-6">Student maintenance portal</p>
+
+        {/* Language switcher */}
+        <div className="flex justify-end gap-2 mb-6">
+          {languages.map(l => (
+            <button
+              key={l.code}
+              onClick={() => setLang(l.code)}
+              className={`px-3 py-1 rounded text-sm font-medium border transition-colors ${
+                lang === l.code
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+
+        <h1 className="text-2xl font-bold mb-1">🔧 {t.appTitle}</h1>
+        <p className="text-gray-500 text-sm mb-6">{t.appSubtitle}</p>
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t.bacMatricule}
+        </label>
         <input
-          className="w-full border p-2 mb-3 rounded"
-          placeholder="Email"
-          onChange={e => setEmail(e.target.value)}
+          className="w-full border p-2 mb-4 rounded"
+          placeholder={t.bacMatriculePlaceholder}
+          onChange={e => setMatriculeBac(e.target.value)}
         />
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t.bacYear}
+        </label>
         <input
-          className="w-full border p-2 mb-3 rounded"
-          placeholder="Password"
-          type="password"
-          onChange={e => setPassword(e.target.value)}
+          className="w-full border p-2 mb-6 rounded"
+          placeholder={t.bacYearPlaceholder}
+          type="number"
+          onChange={e => setAnneeBac(e.target.value)}
         />
+
         <button
           onClick={handleLogin}
-          className="w-full bg-blue-600 text-white p-2 rounded mb-2 hover:bg-blue-700"
+          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
         >
-          Login
+          {t.login}
         </button>
-        <button
-          onClick={handleSignup}
-          className="w-full border border-blue-600 text-blue-600 p-2 rounded hover:bg-blue-50"
-        >
-          Create Account
-        </button>
+
         {message && (
-          <p className="mt-3 text-sm text-center text-gray-500">{message}</p>
+          <p className="mt-4 text-sm text-center text-red-500">{message}</p>
         )}
       </div>
     </div>

@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+# repair-app
+>>>>>>> fd63df694cfe40d2a82f173b0e2d22fe16818a80
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
