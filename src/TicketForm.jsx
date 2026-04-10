@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import translations from './translations'
+import { assignPriority, generateTrackingCode, getDaySlots, nightShiftLabel } from './utils'
 
 const languages = [
   { code: 'en', label: 'EN' },
@@ -8,135 +9,274 @@ const languages = [
   { code: 'ar', label: 'ع' },
 ]
 
-export default function TicketForm({ student, onLogout, lang, setLang, t }) {
-  const [view, setView] = useState('form') // 'form' | 'tickets' | 'success'
-  const [categorie, setCategorie] = useState('')
+const priorityColors = {
+  High: 'bg-red-100 text-red-700 border-red-200',
+  Medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  Low: 'bg-green-100 text-green-700 border-green-200',
+}
+
+const statusColors = {
+  'En attente': 'bg-gray-100 text-gray-600',
+  'En cours': 'bg-blue-100 text-blue-700',
+  'Résolu': 'bg-green-100 text-green-700',
+}
+
+// Locations that require availability selection (room only)
+const NEEDS_AVAILABILITY = ['room']
+
+export default function TicketForm({ student, onLogout, lang, setLang }) {
+  const t = translations[lang]
+  const daySlots = getDaySlots()
+  const [view, setView] = useState('form')
+
+  // Form state
+  const [location, setLocation] = useState('')
+  const [exactLocation, setExactLocation] = useState('')
+  const [problemType, setProblemType] = useState('')
+  const [priority, setPriority] = useState('')
   const [description, setDescription] = useState('')
-  const [priorite, setPriorite] = useState('')
+  const [availability, setAvailability] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [trackingCode, setTrackingCode] = useState('')
+  const fileRef = useRef()
+
+  // My tickets
   const [tickets, setTickets] = useState([])
+  const [loadingTickets, setLoadingTickets] = useState(false)
+
+  // Track
+  const [trackInput, setTrackInput] = useState('')
+  const [trackedTicket, setTrackedTicket] = useState(null)
+  const [trackError, setTrackError] = useState('')
+
+  // Feedback
+  const [rating, setRating] = useState(0)
+  const [feedbackNote, setFeedbackNote] = useState('')
+  const [feedbackDone, setFeedbackDone] = useState(false)
+  const [feedbackTicketId, setFeedbackTicketId] = useState(null)
+
+  // Reset dependent fields when location changes
+  useEffect(() => {
+    setProblemType('')
+    setPriority('')
+    setExactLocation('')
+    setAvailability('')
+  }, [location])
+
+  // Auto-assign priority when problem type changes
+  useEffect(() => {
+    if (problemType) setPriority(assignPriority(problemType))
+  }, [problemType])
+
+  const handleImageChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowed.includes(file.type)) {
+    alert('Please use JPG, PNG or WEBP images only. JFIF is not supported.')
+    return
+  }
+
+  setImageFile(file)
+  setImagePreview(URL.createObjectURL(file))
+}
+
+  const uploadImage = async (file, code) => {
+    const ext = file.name.split('.').pop()
+    const path = `tickets/${code}.${ext}`
+    const { error } = await supabase.storage
+      .from('ticket-images')
+      .upload(path, file, { upsert: true })
+    if (error) { console.error('Upload error:', error); return null }
+    const { data } = supabase.storage.from('ticket-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  // Build the display location string
+  const buildLocationDisplay = () => {
+    if (location === 'room') {
+      return `${t.locations.room} ${student['Chambre']} — ${t.pavilion} ${student['Pavillon']}`
+    }
+    return `${t.locations[location]}${exactLocation ? ` — ${exactLocation}` : ''}`
+  }
+
+  const handleSubmit = async () => {
+    setMessage('')
+
+    // Validate required fields
+    if (!location || !problemType || !description) {
+      setMessage(t.fillAll); return
+    }
+    if (location !== 'room' && !exactLocation.trim()) {
+      setMessage(t.fillExactLocation); return
+    }
+    if (NEEDS_AVAILABILITY.includes(location) && !availability) {
+      setMessage(t.fillAll); return
+    }
+
+    setSubmitting(true)
+    const code = generateTrackingCode()
+    let imageUrl = null
+
+    if (imageFile) imageUrl = await uploadImage(imageFile, code)
+
+    const { error } = await supabase.from('tickets').insert([{
+      tracking_code: code,
+      nom: student['Nom'],
+      chambre: student['Chambre'],
+      pavillon: student['Pavillon'],
+      location: t.locations[location],
+      exact_location: location === 'room'
+        ? `${t.room} ${student['Chambre']} — ${t.pavilion} ${student['Pavillon']}`
+        : exactLocation,
+      problem_type: problemType,
+      priorite: priority,
+      description,
+      availability: NEEDS_AVAILABILITY.includes(location) ? availability : null,
+      image_url: imageUrl,
+      statut: 'En attente',
+    }])
+
+    setSubmitting(false)
+    if (error) { setMessage('Error: ' + error.message); return }
+
+    setTrackingCode(code)
+    setView('success')
+    // Reset form
+    setLocation(''); setProblemType(''); setPriority('')
+    setDescription(''); setAvailability(''); setExactLocation('')
+    setImageFile(null); setImagePreview(null)
+  }
 
   const fetchTickets = async () => {
+    setLoadingTickets(true)
     const { data } = await supabase
-      .from('tickets')
-      .select('*')
+      .from('tickets').select('*')
       .eq('nom', student['Nom'])
       .order('created_at', { ascending: false })
     if (data) setTickets(data)
+    setLoadingTickets(false)
   }
 
-  useEffect(() => {
-    if (view === 'tickets') fetchTickets()
-  }, [view])
+  useEffect(() => { if (view === 'tickets') fetchTickets() }, [view])
 
-  const handleSubmit = async () => {
-    if (!categorie || !description || !priorite) {
-      setMessage(t.fillAll)
-      return
-    }
-    const { error } = await supabase
-      .from('tickets')
-      .insert([{
-        nom: student['Nom'],
-        chambre: student['Chambre'],
-        pavillon: student['Pavillon'],
-        categorie,
-        description,
-        priorite,
-        statut: 'En attente'
-      }])
-    if (error) {
-      setMessage('Error: ' + error.message)
-    } else {
-      setView('success')
-      setMessage('')
-    }
+  const handleTrack = async () => {
+    setTrackError(''); setTrackedTicket(null)
+    const { data, error } = await supabase
+      .from('tickets').select('*')
+      .eq('tracking_code', trackInput.trim().toUpperCase())
+      .single()
+    if (error || !data) setTrackError(t.trackNotFound)
+    else { setTrackedTicket(data); setFeedbackDone(false); setRating(0) }
   }
 
-  const statusColor = (statut) => {
-    if (statut === 'Résolu') return 'bg-green-100 text-green-700'
-    if (statut === 'En cours') return 'bg-yellow-100 text-yellow-700'
-    return 'bg-gray-100 text-gray-600'
+  const handleFeedback = async () => {
+    await supabase.from('feedback').insert([{
+      ticket_id: feedbackTicketId || trackedTicket?.id,
+      rating, note: feedbackNote, nom: student['Nom'],
+    }])
+    setFeedbackDone(true)
   }
 
-  const priorityColor = (p) => {
-    if (p === 'Urgente' || p === 'Urgent' || p === 'عاجلة') return 'bg-red-100 text-red-600'
-    if (p === 'Moyenne' || p === 'Medium' || p === 'متوسطة') return 'bg-yellow-100 text-yellow-600'
-    return 'bg-green-100 text-green-600'
-  }
+  // --- SHARED COMPONENTS ---
 
-  // Header shared across all views
   const Header = () => (
-    <div className="bg-white rounded shadow p-4 mb-4 flex justify-between items-center">
+    <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex justify-between items-center">
       <div>
-        <h1 className="font-bold text-lg">🔧 {t.appTitle}</h1>
-        <p className="text-sm text-gray-500">
-          {student['Nom']} — {t.room} {student['Chambre']}, {t.pavilion} {student['Pavillon']}
+        <h1 className="font-bold text-base">🔧 {t.appTitle}</h1>
+        <p className="text-xs text-gray-400">
+          {student['Nom']} · {t.room} {student['Chambre']} · {t.pavilion} {student['Pavillon']}
         </p>
       </div>
-      <div className="flex items-center gap-3">
-        {/* Language switcher */}
+      <div className="flex items-center gap-2">
         <div className="flex gap-1">
           {languages.map(l => (
-            <button
-              key={l.code}
-              onClick={() => setLang(l.code)}
-              className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
-                lang === l.code
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
+            <button key={l.code} onClick={() => setLang(l.code)}
+              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                lang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}>
               {l.label}
             </button>
           ))}
         </div>
-        <button onClick={onLogout} className="text-sm text-red-500 hover:underline">
-          {t.logout}
-        </button>
+        <button onClick={onLogout} className="text-xs text-red-400 hover:underline">{t.logout}</button>
       </div>
     </div>
   )
 
-  // Bottom nav
   const BottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex">
-      <button
-        onClick={() => setView('form')}
-        className={`flex-1 py-3 text-sm font-medium transition-colors ${
-          view === 'form' ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-500'
-        }`}
-      >
-        ✏️ {t.newRequest}
-      </button>
-      <button
-        onClick={() => setView('tickets')}
-        className={`flex-1 py-3 text-sm font-medium transition-colors ${
-          view === 'tickets' ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-500'
-        }`}
-      >
-        📋 {t.myTickets}
-      </button>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex z-10">
+      {[
+        { id: 'form', icon: '✏️', label: t.newRequest },
+        { id: 'tickets', icon: '📋', label: t.myTickets },
+        { id: 'track', icon: '🔍', label: t.trackNav },
+      ].map(tab => (
+        <button key={tab.id} onClick={() => setView(tab.id)}
+          className={`flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-colors ${
+            view === tab.id ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-400'
+          }`}>
+          <span style={{ fontSize: 16 }}>{tab.icon}</span>
+          {tab.label}
+        </button>
+      ))}
     </div>
   )
 
+  const TicketCard = ({ ticket }) => (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex justify-between items-start mb-1">
+        <div>
+          <span className="font-medium text-sm">{ticket.problem_type}</span>
+          <span className="text-xs text-gray-400 ml-2">· {ticket.location}</span>
+        </div>
+        <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.statut]}`}>
+          {t.statuses[ticket.statut]}
+        </span>
+      </div>
+      {ticket.exact_location && (
+        <p className="text-xs text-gray-400 mb-1">📍 {ticket.exact_location}</p>
+      )}
+      <p className="text-sm text-gray-500 mb-2 line-clamp-2">{ticket.description}</p>
+      <div className="flex justify-between items-center">
+        <span className={`text-xs px-2 py-0.5 rounded-full border ${priorityColors[ticket.priorite]}`}>
+          {t.priorities[ticket.priorite]}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-blue-400">{ticket.tracking_code}</span>
+          <span className="text-xs text-gray-300">{new Date(ticket.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      {ticket.image_url && (
+        <img src={ticket.image_url} alt="ticket"
+          className="mt-2 w-full rounded-lg max-h-40 object-cover"
+          onError={e => e.target.style.display = 'none'} />
+      )}
+    </div>
+  )
+
+  // --- SUCCESS VIEW ---
   if (view === 'success') {
     return (
-      <div dir={t.dir} className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded shadow text-center max-w-md w-full">
+      <div dir={t.dir} className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow p-8 text-center max-w-sm w-full">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-xl font-bold mb-2">{t.successTitle}</h2>
           <p className="text-gray-500 text-sm mb-6">{t.successMsg}</p>
-          <button
-            onClick={() => { setView('form'); setCategorie(''); setDescription(''); setPriorite('') }}
-            className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 mb-3"
-          >
-            {t.anotherRequest}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
+            <p className="text-xs text-blue-500 mb-1">{t.trackingCode}</p>
+            <p className="text-2xl font-mono font-bold text-blue-700 tracking-widest">{trackingCode}</p>
+          </div>
+          <p className="text-xs text-gray-400 mb-6">{t.screenshotNote}</p>
+          <button onClick={() => setView('form')}
+            className="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 mb-3 text-sm">
+            {t.trackAnother}
           </button>
-          <button
-            onClick={() => setView('tickets')}
-            className="w-full border border-gray-300 text-gray-600 p-2 rounded hover:bg-gray-50"
-          >
+          <button onClick={() => setView('tickets')}
+            className="w-full border border-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-50 text-sm">
             {t.myTickets}
           </button>
         </div>
@@ -144,36 +284,87 @@ export default function TicketForm({ student, onLogout, lang, setLang, t }) {
     )
   }
 
-  if (view === 'tickets') {
+  // --- TRACK VIEW ---
+  if (view === 'track') {
     return (
-      <div dir={t.dir} className="min-h-screen bg-gray-100 pb-20">
+      <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
         <div className="max-w-lg mx-auto p-4">
           <Header />
-          <div className="space-y-3">
-            {tickets.length === 0 && (
-              <div className="bg-white rounded shadow p-6 text-center text-gray-400">
-                {t.noTickets}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="font-bold text-lg mb-4">{t.trackTitle}</h2>
+            <div className="flex gap-2 mb-4">
+              <input className="flex-1 border rounded-lg p-2 text-sm font-mono uppercase"
+                placeholder={t.trackPlaceholder}
+                value={trackInput}
+                onChange={e => setTrackInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleTrack()}
+              />
+              <button onClick={handleTrack}
+                className="bg-blue-600 text-white px-4 rounded-lg text-sm hover:bg-blue-700">
+                {t.trackBtn}
+              </button>
+            </div>
+
+            {trackError && <p className="text-red-500 text-sm">{trackError}</p>}
+
+            {trackedTicket && (
+              <div className="border rounded-xl p-4 space-y-2">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-mono text-sm font-bold text-blue-600">{trackedTicket.tracking_code}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${statusColors[trackedTicket.statut]}`}>
+                    {t.statuses[trackedTicket.statut]}
+                  </span>
+                </div>
+                <div className="text-sm space-y-1.5 text-gray-600">
+                  <p>📍 <span className="font-medium">{t.locationLabel}:</span> {trackedTicket.location}</p>
+                  {trackedTicket.exact_location && (
+                    <p className="ml-5 text-gray-400 text-xs">{trackedTicket.exact_location}</p>
+                  )}
+                  <p>🔧 <span className="font-medium">{t.typeLabel}:</span> {trackedTicket.problem_type}</p>
+                  <p>⚡ <span className="font-medium">{t.priorityLabel}:</span>
+                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs border ${priorityColors[trackedTicket.priorite]}`}>
+                      {t.priorities[trackedTicket.priorite]}
+                    </span>
+                  </p>
+                  <p>📝 <span className="font-medium">{t.descLabel}:</span> {trackedTicket.description}</p>
+                  {trackedTicket.availability && (
+                    <p>🕐 <span className="font-medium">{t.availabilityLabel}:</span> {trackedTicket.availability}</p>
+                  )}
+                  <p>📅 <span className="font-medium">{t.dateLabel}:</span> {new Date(trackedTicket.created_at).toLocaleDateString()}</p>
+                </div>
+
+                {trackedTicket.image_url && (
+                  <img src={trackedTicket.image_url} alt="ticket"
+                    className="w-full rounded-lg mt-2 max-h-48 object-cover"
+                    onError={e => e.target.style.display = 'none'} />
+                )}
+
+                {/* Feedback if resolved */}
+                {trackedTicket.statut === 'Résolu' && !feedbackDone && (
+                  <div className="border-t pt-3 mt-2">
+                    <p className="font-medium text-sm mb-2">{t.feedbackPrompt}</p>
+                    <div className="flex gap-1 mb-3">
+                      {[1,2,3,4,5].map(star => (
+                        <button key={star} onClick={() => setRating(star)}
+                          className={`text-2xl transition-transform hover:scale-110 ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}>
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <textarea className="w-full border rounded-lg p-2 text-sm h-20 resize-none mb-2"
+                      placeholder={t.feedbackNotePlaceholder}
+                      onChange={e => setFeedbackNote(e.target.value)} />
+                    <button onClick={handleFeedback}
+                      className="w-full bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700">
+                      {t.feedbackSubmit}
+                    </button>
+                  </div>
+                )}
+                {feedbackDone && (
+                  <p className="text-green-600 text-sm font-medium text-center pt-2 border-t">{t.feedbackThanks}</p>
+                )}
               </div>
             )}
-            {tickets.map(ticket => (
-              <div key={ticket.id} className="bg-white rounded shadow p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-sm">{ticket.categorie}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(ticket.statut)}`}>
-                    {t.statuses[ticket.statut] || ticket.statut}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs px-2 py-1 rounded-full ${priorityColor(ticket.priorite)}`}>
-                    {ticket.priorite}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(ticket.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
         <BottomNav />
@@ -181,63 +372,166 @@ export default function TicketForm({ student, onLogout, lang, setLang, t }) {
     )
   }
 
+  // --- MY TICKETS VIEW ---
+  if (view === 'tickets') {
+    return (
+      <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
+        <div className="max-w-lg mx-auto p-4">
+          <Header />
+          {loadingTickets && <p className="text-center text-gray-400 text-sm py-8">...</p>}
+          {!loadingTickets && tickets.length === 0 && (
+            <div className="bg-white rounded-xl shadow-sm p-8 text-center text-gray-400 text-sm">
+              {t.noTickets}
+            </div>
+          )}
+          <div className="space-y-3">
+            {tickets.map(ticket => <TicketCard key={ticket.id} ticket={ticket} />)}
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    )
+  }
+
+  // --- MAIN FORM VIEW ---
+  const needsAvailability = NEEDS_AVAILABILITY.includes(location)
+  const isHighPriority = priority === 'High'
+
   return (
-    <div dir={t.dir} className="min-h-screen bg-gray-100 pb-20">
+    <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-lg mx-auto p-4">
         <Header />
-        <div className="bg-white rounded shadow p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-5">
 
+          {/* 1. Location */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.category}</label>
-            <select
-              className="w-full border p-2 rounded"
-              onChange={e => setCategorie(e.target.value)}
-              defaultValue=""
-            >
-              <option value="" disabled>{t.categoryPlaceholder}</option>
-              {t.categories.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.priority}</label>
-            <div className="flex gap-3">
-              {t.priorities.map((p, i) => (
-                <button
-                  key={p}
-                  onClick={() => setPriorite(p)}
-                  className={`flex-1 p-2 rounded border text-sm font-medium transition-colors ${
-                    priorite === p
-                      ? i === 2
-                        ? 'bg-red-500 text-white border-red-500'
-                        : i === 1
-                        ? 'bg-yellow-400 text-white border-yellow-400'
-                        : 'bg-green-500 text-white border-green-500'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t.location} *</label>
+            <div className="flex gap-2">
+              {Object.entries(t.locations).map(([key, label]) => (
+                <button key={key} onClick={() => setLocation(key)}
+                  className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-colors ${
+                    location === key ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}>
+                  {label}
                 </button>
               ))}
             </div>
           </div>
 
+          {/* 2. Exact location — auto for room, text input for pavilion/toilets */}
+          {location && (
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-1">📍 {t.exactLocationLabel || 'Exact location'}</p>
+              {location === 'room' ? (
+                <p className="text-sm font-medium text-gray-700">
+                  {t.room} {student['Chambre']} — {t.pavilion} {student['Pavillon']}
+                </p>
+              ) : (
+                <input
+                  className="w-full bg-white border rounded-lg p-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder={t.exactLocationPlaceholder[location]}
+                  value={exactLocation}
+                  onChange={e => setExactLocation(e.target.value)}
+                />
+              )}
+            </div>
+          )}
+
+          {/* 3. Problem Type */}
+          {location && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.problemType} *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {t.problemTypes[location].map(type => (
+                  <button key={type} onClick={() => setProblemType(type)}
+                    className={`p-2 rounded-lg border text-sm text-start transition-colors ${
+                      problemType === type
+                        ? 'bg-blue-50 border-blue-400 text-blue-700 font-medium'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}>
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Auto Priority Badge */}
+          {priority && (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{t.priorityAuto}:</span>
+                <span className={`text-xs px-3 py-1 rounded-full font-medium border ${priorityColors[priority]}`}>
+                  {t.priorities[priority]}
+                </span>
+              </div>
+              {isHighPriority && (
+                <p className="text-xs text-red-500">{t.priorityHighNote}</p>
+              )}
+            </div>
+          )}
+
+          {/* 5. Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.description}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.description} *</label>
             <textarea
-              className="w-full border p-2 rounded h-32 resize-none"
+              className="w-full border rounded-lg p-3 text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
               placeholder={t.descriptionPlaceholder}
+              value={description}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
 
-          {message && <p className="text-sm text-red-500">{message}</p>}
+          {/* 6. Availability — only for room problems */}
+          
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.availability} *</label>
+              <p className="text-xs text-gray-400 mb-2">{t.availabilityNote}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {daySlots.map(slot => (
+                  <button key={slot} onClick={() => setAvailability(slot)}
+                    className={`p-2 rounded-lg border text-sm font-mono transition-colors ${
+                      availability === slot
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}>
+                    {slot}
+                  </button>
+                ))}{needsAvailability && (
+                {/* Night shift only shown for high priority */}
+                {isHighPriority && (
+                  <button
+                    onClick={() => setAvailability(nightShiftLabel[lang])}
+                    className={`col-span-3 p-2 rounded-lg border text-sm transition-colors ${
+                      availability === nightShiftLabel[lang]
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'border-red-200 text-red-500 hover:bg-red-50'
+                    }`}>
+                    {nightShiftLabel[lang]}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-blue-600 text-white p-3 rounded font-medium hover:bg-blue-700"
-          >
-            {t.submit}
+          {/* 7. Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.image}</label>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" ref={fileRef} className="hidden" onChange={handleImageChange} />
+            <button onClick={() => fileRef.current.click()}
+              className="w-full border-2 border-dashed border-gray-200 rounded-lg p-4 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-400 transition-colors">
+              {imageFile ? `✅ ${t.imageSelected}: ${imageFile.name}` : `📷 ${t.imageBtn}`}
+            </button>
+            {imagePreview && (
+              <img src={imagePreview} alt="preview" className="mt-2 w-full rounded-lg max-h-40 object-cover" />
+            )}
+          </div>
+
+          {message && <p className="text-red-500 text-sm">{message}</p>}
+
+          <button onClick={handleSubmit} disabled={submitting}
+            className="w-full bg-blue-600 text-white p-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            {submitting ? '...' : t.submit}
           </button>
         </div>
       </div>
