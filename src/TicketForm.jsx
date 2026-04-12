@@ -105,12 +105,18 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   useEffect(() => { if (problemType) setPriority(assignPriority(problemType)) }, [problemType])
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(file.type)) { alert('Please use JPG, PNG or WEBP images only.'); return }
-    setImageFile(file); setImagePreview(URL.createObjectURL(file))
+  const file = e.target.files[0]
+  if (!file) return
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowed.includes(file.type)) {
+    alert('Please use JPG, PNG or WEBP images only. JFIF is not supported.')
+    return
   }
+
+  setImageFile(file)
+  setImagePreview(URL.createObjectURL(file))
+}
 
   const uploadImage = async (file, code) => {
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
@@ -464,32 +470,35 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
               placeholder={t.descriptionPlaceholder} value={description} onChange={e => setDescription(e.target.value)} />
           </div>
 
-          {needsAvailability && (
+          {/* 6. Availability — only for room problems */}
+          
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.availability} *</label>
-              <p className="text-xs text-gray-400 mb-3">{t.availabilityNote}</p>
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">{t.dir === 'rtl' ? 'من' : 'From'}</label>
-                  <input type="time" min="08:00" max="17:00"
-                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={availabilityStart} onChange={e => { setAvailabilityStart(e.target.value); setAvailability('') }} />
-                </div>
-                <span className="text-gray-400 pb-2">→</span>
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">{t.dir === 'rtl' ? 'إلى' : 'To'}</label>
-                  <input type="time" min="08:00" max="17:00"
-                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={availabilityEnd} onChange={e => { setAvailabilityEnd(e.target.value); setAvailability('') }} />
-                </div>
+              <p className="text-xs text-gray-400 mb-2">{t.availabilityNote}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {daySlots.map(slot => (
+                  <button key={slot} onClick={() => setAvailability(slot)}
+                    className={`p-2 rounded-lg border text-sm font-mono transition-colors ${
+                      availability === slot
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}>
+                    {slot}
+                  </button>
+                ))}{needsAvailability && (
+                {/* Night shift only shown for high priority */}
+                {isHighPriority && (
+                  <button
+                    onClick={() => setAvailability(nightShiftLabel[lang])}
+                    className={`col-span-3 p-2 rounded-lg border text-sm transition-colors ${
+                      availability === nightShiftLabel[lang]
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'border-red-200 text-red-500 hover:bg-red-50'
+                    }`}>
+                    {nightShiftLabel[lang]}
+                  </button>
+                )}
               </div>
-              {timeError && <p className="text-red-400 text-xs mt-1">{t.dir === 'rtl' ? 'وقت النهاية يجب أن يكون بعد وقت البداية' : 'End time must be after start time'}</p>}
-              {isHighPriority && (
-                <button onClick={() => { setAvailabilityStart(''); setAvailabilityEnd(''); setAvailability(nightShiftLabel[lang]) }}
-                  className={`mt-3 w-full p-2 rounded-lg border text-sm transition-colors ${availability === nightShiftLabel[lang] ? 'bg-red-600 text-white border-red-600' : 'border-red-200 text-red-500 hover:bg-red-50'}`}>
-                  {nightShiftLabel[lang]}
-                </button>
-              )}
             </div>
           )}
 
