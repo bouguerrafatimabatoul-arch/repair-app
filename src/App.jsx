@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import TicketForm from './TicketForm'
+import AdminLogin from './AdminLogin'
+import Dashboard from './Dashboard'
 import translations from './translations'
 
 const languages = [
@@ -15,10 +17,12 @@ export default function App() {
   const [anneeBac, setAnneeBac] = useState('')
   const [message, setMessage] = useState('')
   const [student, setStudent] = useState(null)
+  const [chef, setChef] = useState(null)
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
 
   const t = translations[lang]
 
-  const handleLogin = async () => {
+  const handleStudentLogin = async () => {
     setMessage('')
     const { data, error } = await supabase
       .from('students')
@@ -27,29 +31,22 @@ export default function App() {
       .eq('Annee de Bac', parseInt(anneeBac))
       .single()
 
-    if (error || !data) {
-      setMessage(t.loginError)
-      return
-    }
+    if (error || !data) { setMessage(t.loginError); return }
     setStudent(data)
   }
 
-  if (student) {
-    return (
-      <TicketForm
-        student={student}
-        onLogout={() => setStudent(null)}
-        lang={lang}
-        setLang={setLang}
-      />
-    )
-  }
+  if (chef) return <Dashboard chef={chef} onLogout={() => setChef(null)} />
+
+  if (showAdminLogin) return <AdminLogin onLogin={setChef} onBack={() => setShowAdminLogin(false)} />
+
+  if (student) return (
+    <TicketForm student={student} onLogout={() => setStudent(null)} lang={lang} setLang={setLang} />
+  )
 
   return (
     <div dir={t.dir} className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-md w-96">
 
-        {/* Language switcher */}
         <div className="flex justify-end gap-2 mb-6">
           {languages.map(l => (
             <button key={l.code} onClick={() => setLang(l.code)}
@@ -72,14 +69,22 @@ export default function App() {
         <label className="block text-sm font-medium text-gray-700 mb-1">{t.bacYear}</label>
         <input className="w-full border p-2 mb-6 rounded-lg"
           placeholder={t.bacYearPlaceholder} type="number"
-          onChange={e => setAnneeBac(e.target.value)} />
+          onChange={e => setAnneeBac(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
 
-        <button onClick={handleLogin}
+        <button onClick={handleStudentLogin}
           className="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700">
           {t.login}
         </button>
 
         {message && <p className="mt-4 text-sm text-center text-red-500">{message}</p>}
+
+        <div className="mt-8 pt-4 border-t text-center">
+          <button onClick={() => setShowAdminLogin(true)}
+            className="text-xs text-gray-300 hover:text-gray-500 transition-colors">
+            Accès administration
+          </button>
+        </div>
       </div>
     </div>
   )
