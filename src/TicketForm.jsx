@@ -105,18 +105,18 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   useEffect(() => { if (problemType) setPriority(assignPriority(problemType)) }, [problemType])
 
   const handleImageChange = (e) => {
-  const file = e.target.files[0]
-  if (!file) return
+    const file = e.target.files[0]
+    if (!file) return
 
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  if (!allowed.includes(file.type)) {
-    alert('Please use JPG, PNG or WEBP images only. JFIF is not supported.')
-    return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      alert('Please use JPG, PNG or WEBP images only. JFIF is not supported.')
+      return
+    }
+
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
   }
-
-  setImageFile(file)
-  setImagePreview(URL.createObjectURL(file))
-}
 
   const uploadImage = async (file, code) => {
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
@@ -471,7 +471,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           </div>
 
           {/* 6. Availability — only for room problems */}
-          
+          {needsAvailability && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.availability} *</label>
               <p className="text-xs text-gray-400 mb-2">{t.availabilityNote}</p>
@@ -485,7 +485,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                     }`}>
                     {slot}
                   </button>
-                ))}{needsAvailability && (
+                ))}
                 {/* Night shift only shown for high priority */}
                 {isHighPriority && (
                   <button
