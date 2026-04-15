@@ -3,10 +3,11 @@ TO FIX :
 - add an interface for director to oversee everything without editing 
 - add tools used in repair
 - reformulate the printing document 
-- add another chef 
+- add job title in add worker option
 - reorder priority according to status then priority 
 -add admin sees feedback and each worker has a feedback tracking 
-- add worker kpi 
+- add worker kpi  
+- the worker id shows up in exportation and not his name
 <student>
 
 <database>

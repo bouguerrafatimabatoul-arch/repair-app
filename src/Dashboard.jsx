@@ -65,7 +65,7 @@ const T = {
     changeStatus:'Change status',description:'Description',availability:'Availability',
     submittedOn:'Submitted',resolvedOn:'Resolved',exactLocation:'Exact spot',
     adminNote:'Admin note',adminNotePlaceholder:'Note for the student…',saveNote:'Save',
-    assignWorkers:'Assign workers',noWorkers:'No workers available',
+    assignWorkers:'Assign workers',noWorkers:'No workers available',toolsUsed:'Tools used',toolsUsedPlaceholder:'e.g. Drill, Wrench, Wire 2.5mm…',
     priorities:{High:'High',Medium:'Medium',Low:'Low'},
     statuses:{'En attente':'Pending','En cours':'In Progress','Résolu':'Resolved'},
     logout:'Logout',notifications:'Notifications',noNotifs:'No notifications',
@@ -84,7 +84,7 @@ const T = {
     printAll:'Print all',printFiltered:'Print filtered',
     addWorkerTitle:'Add new worker',addWorkerName:'Last name',addWorkerFirst:'First name',
     addWorkerMatricule:'Matricule',addWorkerGrade:'Grade',addWorkerBtn:'Add worker',
-    addWorkerSaved:'Worker added!',addWorkerError:'Error adding worker.',
+    addWorkerJobTitle:'Job title',addWorkerSaved:'Worker added!',addWorkerError:'Error adding worker.',
     filtersTitle:'Filters',filterDate:'Date range',filterFrom:'From',filterTo:'To',
     filterPavillon:'Pavilion',filterStatus:'Status',filterPriority:'Priority',
     filterType:'Problem type',filterLocation:'Location',filterAll:'All',
@@ -97,7 +97,7 @@ const T = {
     changeStatus:'Changer le statut',description:'Description',availability:'Disponibilité',
     submittedOn:'Soumis',resolvedOn:'Résolu',exactLocation:'Endroit précis',
     adminNote:'Note admin',adminNotePlaceholder:"Note pour l'étudiant…",saveNote:'Enregistrer',
-    assignWorkers:'Assigner des ouvriers',noWorkers:'Aucun ouvrier',
+    assignWorkers:'Assigner des ouvriers',noWorkers:'Aucun ouvrier',toolsUsed:'Outils utilisés',toolsUsedPlaceholder:'ex: Perceuse, Clé, Câble 2.5mm…',
     priorities:{High:'Haute',Medium:'Moyenne',Low:'Faible'},
     statuses:{'En attente':'En attente','En cours':'En cours','Résolu':'Résolu'},
     logout:'Déconnexion',notifications:'Notifications',noNotifs:'Aucune notification',
@@ -129,7 +129,7 @@ const T = {
     changeStatus:'تغيير الحالة',description:'الوصف',availability:'التوفر',
     submittedOn:'تاريخ التقديم',resolvedOn:'تاريخ الحل',exactLocation:'المكان الدقيق',
     adminNote:'ملاحظة الإدارة',adminNotePlaceholder:'ملاحظة للطالب…',saveNote:'حفظ',
-    assignWorkers:'تعيين عمال',noWorkers:'لا يوجد عمال',
+    assignWorkers:'تعيين عمال',noWorkers:'لا يوجد عمال',toolsUsed:'الأدوات المستخدمة',toolsUsedPlaceholder:'مثال: مثقاب، مفتاح ربط، سلك 2.5مم…',
     priorities:{High:'عالية',Medium:'متوسطة',Low:'منخفضة'},
     statuses:{'En attente':'قيد الانتظار','En cours':'جارٍ','Résolu':'تم الحل'},
     logout:'تسجيل الخروج',notifications:'الإشعارات',noNotifs:'لا توجد إشعارات',
@@ -148,7 +148,7 @@ const T = {
     printAll:'طباعة الكل',printFiltered:'طباعة المفلتر',
     addWorkerTitle:'إضافة عامل جديد',addWorkerName:'اللقب',addWorkerFirst:'الاسم',
     addWorkerMatricule:'الرقم التسلسلي',addWorkerGrade:'الرتبة',addWorkerBtn:'إضافة',
-    addWorkerSaved:'تم إضافة العامل!',addWorkerError:'خطأ في الإضافة.',
+    addWorkerJobTitle:'المسمى الوظيفي',addWorkerSaved:'تم إضافة العامل!',addWorkerError:'خطأ في الإضافة.',
     filtersTitle:'الفلاتر',filterDate:'نطاق التاريخ',filterFrom:'من',filterTo:'إلى',
     filterPavillon:'الجناح',filterStatus:'الحالة',filterPriority:'الأولوية',
     filterType:'نوع المشكلة',filterLocation:'الموقع',filterAll:'الكل',
@@ -273,11 +273,12 @@ function WorkerPicker({workers,selected,onChange,txt}){
 // ─── Ticket modal ──────────────────────────────────────────────────────────────
 function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating}){
   const [note,setNote]=useState(ticket.admin_note||'')
+  const [tools,setTools]=useState(ticket.tools_used||'')
   const [sel,setSel]=useState(()=>{try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]}})
   const [saving,setSaving]=useState(false)
   const fb=feedbacks.find(f=>f.ticket_id===ticket.id)
   const escalated=ep!==ticket.priorite
-  const handleSave=async()=>{setSaving(true);await onSave(ticket.id,note,JSON.stringify(sel));setSaving(false)}
+  const handleSave=async()=>{setSaving(true);await onSave(ticket.id,note,JSON.stringify(sel),tools);setSaving(false)}
   return(
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}
       onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
@@ -336,7 +337,7 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
 function SettingsPanel({settings,onSave,txt,onClose}){
   const [d,setD]=useState(settings)
   const [saved,setSaved]=useState(false)
-  const [newWorker,setNewWorker]=useState({nom:'',prenom:'',matricule:'',grade:''})
+  const [newWorker,setNewWorker]=useState({nom:'',prenom:'',matricule:'',grade:'',jobTitle:''})
   const [workerMsg,setWorkerMsg]=useState('')
   const [addingWorker,setAddingWorker]=useState(false)
   const save=()=>{onSave(d);setSaved(true);setTimeout(()=>setSaved(false),2000)}
@@ -345,13 +346,13 @@ function SettingsPanel({settings,onSave,txt,onClose}){
   const handleAddWorker=async()=>{
     if(!newWorker.nom.trim()||!newWorker.prenom.trim()){setWorkerMsg('⚠️ Name and first name required');return}
     setAddingWorker(true)
-    const insertData={'Nom':newWorker.nom.trim(),'Prénom':newWorker.prenom.trim(),'Grade':newWorker.grade.trim()||'عامل صيانة','job title':'عامل صيانة'}
+    const insertData={'Nom':newWorker.nom.trim(),'Prénom':newWorker.prenom.trim(),'Grade':newWorker.grade.trim()||'عامل صيانة','job title':newWorker.jobTitle.trim()||'عامل صيانة'}
     if(newWorker.matricule) insertData['Matricule']=parseInt(newWorker.matricule)
     const {error}=await supabase.from('workers').insert([insertData])
     setAddingWorker(false)
     if(error){console.error('Worker insert error:',error);setWorkerMsg('❌ '+error.message);return}
     setWorkerMsg('✅ '+txt.addWorkerSaved)
-    setNewWorker({nom:'',prenom:'',matricule:'',grade:''})
+    setNewWorker({nom:'',prenom:'',matricule:'',grade:'',jobTitle:''})
     setTimeout(()=>setWorkerMsg(''),3000)
   }
   return(
@@ -443,6 +444,11 @@ function SettingsPanel({settings,onSave,txt,onClose}){
                     value={newWorker.grade} onChange={e=>setNewWorker(x=>({...x,grade:e.target.value}))} placeholder="Technicien"/>
                 </div>
               </div>
+              <div>
+                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerJobTitle}</label>
+                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    value={newWorker.jobTitle} onChange={e=>setNewWorker(x=>({...x,jobTitle:e.target.value}))} placeholder="عامل صيانة"/>
+                </div>
               {workerMsg&&<p className="text-xs py-1">{workerMsg}</p>}
               <button onClick={handleAddWorker} disabled={addingWorker}
                 className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 transition-colors">
@@ -707,10 +713,10 @@ export default function Dashboard({chef,onLogout}){
     if(t)await supabase.from('notifications').insert([{ticket_id:id,tracking_code:t.tracking_code,nom:t.nom,message_student:`Your ticket ${t.tracking_code} is now: ${s}`,type:'status_update',read_by_admin:true}])
     setUpdating(false)
   }
-  const saveNote=async(id,note,workers)=>{
-    await supabase.from('tickets').update({admin_note:note,assigned_workers:workers}).eq('id',id)
-    setTickets(prev=>prev.map(t=>t.id===id?{...t,admin_note:note,assigned_workers:workers}:t))
-    setSelTicket(prev=>prev?{...prev,admin_note:note,assigned_workers:workers}:prev)
+  const saveNote=async(id,note,workers,tools)=>{
+    await supabase.from('tickets').update({admin_note:note,assigned_workers:workers,tools_used:tools}).eq('id',id)
+    setTickets(prev=>prev.map(t=>t.id===id?{...t,admin_note:note,assigned_workers:workers,tools_used:tools}:t))
+    setSelTicket(prev=>prev?{...prev,admin_note:note,assigned_workers:workers,tools_used:tools}:prev)
   }
   const markAllRead=async()=>{
     await supabase.from('notifications').update({read_by_admin:true}).eq('read_by_admin',false)
@@ -719,9 +725,9 @@ export default function Dashboard({chef,onLogout}){
   const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{}}
   const exportToExcel=(data,name)=>{
     const colNames={
-      en:{code:'Code',student:'Student',room:'Room',pavilion:'Pavilion',location:'Location',type:'Problem Type',priority:'Priority',effPriority:'Effective Priority',status:'Status',description:'Description',adminNote:'Admin Note',workers:'Assigned Workers',submitted:'Submitted',resolved:'Resolved'},
-      fr:{code:'Code',student:'Étudiant',room:'Chambre',pavilion:'Pavillon',location:'Emplacement',type:'Type de problème',priority:'Priorité',effPriority:'Priorité effective',status:'Statut',description:'Description',adminNote:'Note admin',workers:'Ouvriers assignés',submitted:'Soumis le',resolved:'Résolu le'},
-      ar:{code:'الكود',student:'الطالب',room:'الغرفة',pavilion:'الجناح',location:'الموقع',type:'نوع المشكلة',priority:'الأولوية',effPriority:'الأولوية الفعلية',status:'الحالة',description:'الوصف',adminNote:'ملاحظة الإدارة',workers:'العمال المعينون',submitted:'تاريخ التقديم',resolved:'تاريخ الحل'},
+      en:{code:'Code',student:'Student',room:'Room',pavilion:'Pavilion',location:'Location',type:'Problem Type',priority:'Priority',effPriority:'Effective Priority',status:'Status',description:'Description',adminNote:'Admin Note',workers:'Assigned Workers',tools:'Tools Used',submitted:'Submitted',resolved:'Resolved'},
+      fr:{code:'Code',student:'Étudiant',room:'Chambre',pavilion:'Pavillon',location:'Emplacement',type:'Type de problème',priority:'Priorité',effPriority:'Priorité effective',status:'Statut',description:'Description',adminNote:'Note admin',workers:'Ouvriers assignés',tools:'Outils utilisés',submitted:'Soumis le',resolved:'Résolu le'},
+      ar:{code:'الكود',student:'الطالب',room:'الغرفة',pavilion:'الجناح',location:'الموقع',type:'نوع المشكلة',priority:'الأولوية',effPriority:'الأولوية الفعلية',status:'الحالة',description:'الوصف',adminNote:'ملاحظة الإدارة',workers:'العمال المعينون',tools:'الأدوات المستخدمة',submitted:'تاريخ التقديم',resolved:'تاريخ الحل'},
     }
     const c=colNames[lang]||colNames.fr
     const ws=XLSX.utils.json_to_sheet(data.map(t=>({
@@ -737,6 +743,7 @@ export default function Dashboard({chef,onLogout}){
       [c.description]:t.description,
       [c.adminNote]:t.admin_note||'',
       [c.workers]:t.assigned_workers||'',
+      [c.tools]:t.tools_used||'',
       [c.submitted]:new Date(t.created_at).toLocaleString(),
       [c.resolved]:t.resolved_at?new Date(t.resolved_at).toLocaleString():'',
     })))
@@ -744,40 +751,81 @@ export default function Dashboard({chef,onLogout}){
   }
 
   const handlePrint=(data)=>{
-    const rows=data.map(t=>`
-      <tr>
-        <td>${t.tracking_code||''}</td>
-        <td>${t.nom||''}</td>
-        <td>${t.chambre||''} / ${t.pavillon||''}</td>
-        <td>${tf(t.problem_type,lang,PM)}</td>
-        <td>${txt.priorities[getEffectivePriority(t,settings)]||t.priorite}</td>
-        <td>${txt.statuses[t.statut]||t.statut}</td>
-        <td>${new Date(t.created_at).toLocaleDateString()}</td>
-        <td>${t.resolved_at?new Date(t.resolved_at).toLocaleDateString():''}</td>
-        <td>${t.admin_note||''}</td>
-      </tr>`).join('')
     const dir=txt.dir||'ltr'
-    const html=`<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8"/><title>Tickets</title>
+    const statusBg={'En attente':'#f3f4f6','En cours':'#dbeafe','Résolu':'#dcfce7'}
+    const prioBg={High:'#fee2e2',Medium:'#fef9c3',Low:'#dcfce7'}
+    const rows=data.map(t=>{
+      const ep=getEffectivePriority(t,settings)
+      let workers=''
+      try{const ids=JSON.parse(t.assigned_workers||'[]');workers=ids.length?`(${ids.length})`:'' }catch{}
+      return`<tr style="border-bottom:1px solid #e5e7eb">
+        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:#1d4ed8;white-space:nowrap">${t.tracking_code||''}</td>
+        <td style="padding:8px 10px"><strong>${t.nom||''}</strong><br/><span style="color:#9ca3af;font-size:9px">${t.chambre||''} · ${t.pavillon||''}</span></td>
+        <td style="padding:8px 10px;font-size:10px">${tf(t.location,lang,LM)}<br/><span style="color:#9ca3af;font-size:9px">${t.exact_location||''}</span></td>
+        <td style="padding:8px 10px;font-size:10px">${tf(t.problem_type,lang,PM)}</td>
+        <td style="padding:8px 10px"><span style="background:${prioBg[ep]||'#f3f4f6'};padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600">${txt.priorities[ep]||ep}</span></td>
+        <td style="padding:8px 10px"><span style="background:${statusBg[t.statut]||'#f3f4f6'};padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600">${txt.statuses[t.statut]||t.statut}</span></td>
+        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${new Date(t.created_at).toLocaleDateString()}</td>
+        <td style="padding:8px 10px;font-size:9px;color:#16a34a">${t.resolved_at?new Date(t.resolved_at).toLocaleDateString():''}</td>
+        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${t.tools_used||''}</td>
+        <td style="padding:8px 10px;font-size:9px">${t.admin_note||''}</td>
+        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${workers}</td>
+      </tr>`
+    }).join('')
+    const pending=data.filter(t=>t.statut==='En attente').length
+    const inprog=data.filter(t=>t.statut==='En cours').length
+    const done=data.filter(t=>t.statut==='Résolu').length
+    const html=`<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8"/>
+    <title>${txt.title} — ${new Date().toLocaleDateString()}</title>
     <style>
-      body{font-family:Arial,sans-serif;font-size:11px;margin:20px;direction:${dir}}
-      h2{margin-bottom:8px;font-size:14px}
-      p{color:#666;margin-bottom:12px;font-size:10px}
-      table{width:100%;border-collapse:collapse}
-      th{background:#1d4ed8;color:white;padding:6px 8px;text-align:${dir==='rtl'?'right':'left'};font-size:10px}
-      td{padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:10px}
-      tr:nth-child(even){background:#f9fafb}
-      @media print{button{display:none}}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;font-size:11px;color:#111827;direction:${dir};background:#fff}
+      .page{max-width:1100px;margin:0 auto;padding:24px}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1d4ed8}
+      .header-left h1{font-size:18px;font-weight:700;color:#1d4ed8}
+      .header-left p{font-size:11px;color:#6b7280;margin-top:4px}
+      .header-right{text-align:${dir==='rtl'?'left':'right'};font-size:10px;color:#6b7280;line-height:1.8}
+      .stats{display:flex;gap:12px;margin-bottom:20px}
+      .stat{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center}
+      .stat .num{font-size:22px;font-weight:700;color:#111827}
+      .stat .lbl{font-size:9px;color:#6b7280;margin-top:2px;text-transform:uppercase}
+      table{width:100%;border-collapse:collapse;font-size:10px}
+      thead tr{background:#1d4ed8}
+      thead th{color:white;padding:8px 10px;text-align:${dir==='rtl'?'right':'left'};font-size:10px;font-weight:600;white-space:nowrap}
+      tbody tr:nth-child(even){background:#f9fafb}
+      .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between}
+      @media print{@page{size:A4 landscape;margin:12mm}.page{padding:0}button{display:none}}
     </style></head><body>
-    <h2>🔧 ${txt.title} — ${new Date().toLocaleDateString()}</h2>
-    <p>${chef['Nom']} ${chef['Prénom']} · ${data.length} tickets</p>
-    <table>
-      <thead><tr>
-        <th>Code</th><th>${txt.student}</th><th>${txt.room}/${txt.filterPavillon}</th>
-        <th>${txt.type}</th><th>${txt.priority}</th><th>${txt.status}</th>
-        <th>${txt.submittedOn}</th><th>${txt.resolvedOn}</th><th>${txt.adminNote}</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <div class="page">
+      <div class="header">
+        <div class="header-left">
+          <h1>🔧 ${txt.title}</h1>
+          <p>${chef['Nom']} ${chef['Prénom']} · ${txt.serviceManager}</p>
+        </div>
+        <div class="header-right">
+          <div>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+          <div>${data.length} tickets</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="num">${data.length}</div><div class="lbl">Total</div></div>
+        <div class="stat"><div class="num" style="color:#6b7280">${pending}</div><div class="lbl">${txt.statuses['En attente']}</div></div>
+        <div class="stat"><div class="num" style="color:#3b82f6">${inprog}</div><div class="lbl">${txt.statuses['En cours']}</div></div>
+        <div class="stat"><div class="num" style="color:#16a34a">${done}</div><div class="lbl">${txt.statuses['Résolu']}</div></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Code</th><th>${txt.student}</th><th>${txt.location}</th><th>${txt.type}</th>
+          <th>${txt.priority}</th><th>${txt.status}</th><th>${txt.submittedOn}</th><th>${txt.resolvedOn}</th>
+          <th>${txt.toolsUsed}</th><th>${txt.adminNote}</th><th>👷</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="footer">
+        <span>${txt.title} · ${new Date().toLocaleString()}</span>
+        <span>${chef['Nom']} ${chef['Prénom']}</span>
+      </div>
+    </div>
     <script>window.onload=()=>window.print()<\/script>
     </body></html>`
     const w=window.open('','_blank')
@@ -801,8 +849,9 @@ export default function Dashboard({chef,onLogout}){
       if(filters.location&&tf(t.location,'en',LM)!==tf(filters.location,'en',LM))return false
       return true
     }).sort((a,b)=>{
-      if(a.statut==='Résolu'&&b.statut!=='Résolu')return 1
-      if(b.statut==='Résolu'&&a.statut!=='Résolu')return -1
+      const statusOrder={'En attente':0,'En cours':1,'Résolu':2}
+      const so=(statusOrder[a.statut]??0)-(statusOrder[b.statut]??0)
+      if(so!==0)return so
       const pr=priorityRank(a.ep)-priorityRank(b.ep)
       if(pr!==0)return pr
       return new Date(a.created_at)-new Date(b.created_at)
