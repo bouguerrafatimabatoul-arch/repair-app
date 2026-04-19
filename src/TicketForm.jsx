@@ -10,15 +10,30 @@ const languages = [
 ]
 
 const priorityColors = {
-  High:   'bg-red-100 text-red-700 border-red-200',
-  Medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  Low:    'bg-green-100 text-green-700 border-green-200',
+  High:   'text-red-400 border border-red-500/30',
+  Medium: 'text-amber-400 border border-amber-500/30',
+  Low:    'text-emerald-400 border border-emerald-500/30',
+}
+const priorityBg = {
+  High:   'rgba(239,68,68,0.1)',
+  Medium: 'rgba(245,158,11,0.1)',
+  Low:    'rgba(16,185,129,0.1)',
 }
 
 const statusColors = {
-  'En attente': 'bg-gray-100 text-gray-600',
-  'En cours':   'bg-blue-100 text-blue-700',
-  'Résolu':     'bg-green-100 text-green-700',
+  'En attente': 'text-amber-400',
+  'En cours':   'text-blue-400',
+  'Résolu':     'text-emerald-400',
+}
+const statusBg = {
+  'En attente': 'rgba(245,158,11,0.1)',
+  'En cours':   'rgba(59,130,246,0.1)',
+  'Résolu':     'rgba(16,185,129,0.1)',
+}
+const statusBorder = {
+  'En attente': 'rgba(245,158,11,0.25)',
+  'En cours':   'rgba(59,130,246,0.25)',
+  'Résolu':     'rgba(16,185,129,0.25)',
 }
 
 const NEEDS_AVAILABILITY = ['room']
@@ -86,6 +101,17 @@ const tf = (v, lang, map) => map?.[v]?.[lang] ?? v
 const toEnKey = (v) => PM[v]?.en ?? v
 const toEnLoc = (v) => LM[v]?.en ?? v
 
+const glassCard = {
+  background: 'rgba(255,255,255,0.03)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.07)',
+}
+const glassInput = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  color: '#e2e8f0',
+}
+
 // ── FeedbackWidget — defined OUTSIDE main to prevent remounting ────────────────
 function FeedbackWidget({ ticket, existingFeedback, lang, t, onSubmit }) {
   const [rating, setRating] = useState(0)
@@ -104,32 +130,35 @@ function FeedbackWidget({ ticket, existingFeedback, lang, t, onSubmit }) {
   if (existingFeedback || done) {
     const r = existingFeedback?.rating ?? rating
     return (
-      <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3 mt-3">
-        <p className="text-xs font-medium text-yellow-700 mb-1">⭐ {t.feedbackThanks}</p>
-        <p className="text-yellow-400 text-lg">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
+      <div className="rounded-xl p-3 mt-3" style={{background:'rgba(251,191,36,0.05)',border:'1px solid rgba(251,191,36,0.15)'}}>
+        <p className="text-xs font-medium mb-1" style={{color:'rgba(251,191,36,0.7)'}}>⭐ {t.feedbackThanks}</p>
+        <p className="text-lg" style={{color:'#fbbf24'}}>{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
       </div>
     )
   }
 
   return (
-    <div className="border-t pt-3 mt-3">
-      <p className="text-sm font-medium text-gray-700 mb-2">{t.feedbackPrompt}</p>
+    <div className="pt-3 mt-3" style={{borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+      <p className="text-sm font-medium mb-2" style={{color:'rgba(255,255,255,0.7)'}}>{t.feedbackPrompt}</p>
       <div className="flex gap-1 mb-3">
         {[1,2,3,4,5].map(star => (
           <button key={star} type="button" onClick={() => setRating(star)}
-            className={`text-2xl transition-transform hover:scale-110 ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}>
+            className="text-2xl transition-transform hover:scale-110"
+            style={{color: star <= rating ? '#fbbf24' : 'rgba(255,255,255,0.15)'}}>
             ★
           </button>
         ))}
       </div>
       <textarea
-        className="w-full border rounded-lg p-2 text-sm h-20 resize-none mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        className="w-full rounded-xl p-2 text-sm h-20 resize-none mb-2 focus:outline-none transition-all"
+        style={glassInput}
         placeholder={t.feedbackNotePlaceholder}
         value={note}
         onChange={e => setNote(e.target.value)}
       />
       <button type="button" onClick={handleSubmit} disabled={rating === 0 || saving}
-        className="w-full bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-40 transition-colors">
+        className="w-full py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
+        style={{background:'rgba(16,185,129,0.2)',color:'#34d399',border:'1px solid rgba(16,185,129,0.3)'}}>
         {saving ? '...' : t.feedbackSubmit}
       </button>
     </div>
@@ -138,59 +167,58 @@ function FeedbackWidget({ ticket, existingFeedback, lang, t, onSubmit }) {
 
 // ── TicketCard — defined OUTSIDE main ─────────────────────────────────────────
 function TicketCard({ ticket, lang, t, feedbacks, onFeedbackSubmit }) {
-  const priorityColor  = priorityColors[ticket.priorite]  || 'bg-gray-100 text-gray-600 border-gray-200'
-  const statusColor    = statusColors[ticket.statut]       || 'bg-gray-100 text-gray-600'
   const existingFeedback = feedbacks.find(f => f.ticket_id === ticket.id)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="rounded-xl p-4" style={glassCard}>
       <div className="flex justify-between items-start mb-1">
         <div>
-          <span className="font-medium text-sm">{tf(ticket.problem_type, lang, PM)}</span>
-          <span className="text-xs text-gray-400 ml-2">· {tf(ticket.location, lang, LM)}</span>
+          <span className="font-medium text-sm" style={{color:'#e2e8f0'}}>{tf(ticket.problem_type, lang, PM)}</span>
+          <span className="text-xs ml-2" style={{color:'rgba(255,255,255,0.3)'}}>· {tf(ticket.location, lang, LM)}</span>
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${statusColor}`}>
+        <span className="text-xs px-2 py-1 rounded-full font-medium"
+          style={{background:statusBg[ticket.statut],color:ticket.statut==='En attente'?'#fbbf24':ticket.statut==='En cours'?'#60a5fa':'#34d399',border:`1px solid ${statusBorder[ticket.statut]}`}}>
           {tf(ticket.statut, lang, SM)}
         </span>
       </div>
 
       {ticket.exact_location && (
-        <p className="text-xs text-gray-400 mb-1">📍 {ticket.exact_location}</p>
+        <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.3)'}}>📍 {ticket.exact_location}</p>
       )}
-      <p className="text-sm text-gray-500 mb-2 line-clamp-2">{ticket.description}</p>
+      <p className="text-sm mb-2 line-clamp-2" style={{color:'rgba(255,255,255,0.5)'}}>{ticket.description}</p>
 
       {ticket.admin_note && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 mb-2">
-          <p className="text-xs text-blue-600 font-medium mb-0.5">
+        <div className="rounded-lg p-2 mb-2" style={{background:'rgba(59,130,246,0.05)',border:'1px solid rgba(59,130,246,0.15)'}}>
+          <p className="text-xs font-medium mb-0.5" style={{color:'rgba(96,165,250,0.7)'}}>
             📋 {lang === 'ar' ? 'ملاحظة الإدارة' : lang === 'fr' ? 'Note admin' : 'Admin note'}
           </p>
-          <p className="text-xs text-blue-700">{ticket.admin_note}</p>
+          <p className="text-xs" style={{color:'#93c5fd'}}>{ticket.admin_note}</p>
         </div>
       )}
 
       {ticket.resolved_at && (
-        <p className="text-xs text-green-600 mb-1">
+        <p className="text-xs mb-1" style={{color:'#34d399'}}>
           ✅ {lang === 'ar' ? 'تم الحل:' : lang === 'fr' ? 'Résolu le:' : 'Resolved:'} {new Date(ticket.resolved_at).toLocaleString()}
         </p>
       )}
 
       <div className="flex justify-between items-center">
-        <span className={`text-xs px-2 py-0.5 rounded-full border ${priorityColor}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${priorityColors[ticket.priorite]}`}
+          style={{background:priorityBg[ticket.priorite]}}>
           {tf(ticket.priorite, lang, PrioM)}
         </span>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-blue-400">{ticket.tracking_code}</span>
-          <span className="text-xs text-gray-300">{new Date(ticket.created_at).toLocaleDateString()}</span>
+          <span className="font-mono text-xs" style={{color:'#60a5fa'}}>{ticket.tracking_code}</span>
+          <span className="text-xs" style={{color:'rgba(255,255,255,0.2)'}}>{new Date(ticket.created_at).toLocaleDateString()}</span>
         </div>
       </div>
 
       {ticket.image_url && (
         <img src={ticket.image_url} alt="ticket"
-          className="mt-2 w-full rounded-lg max-h-40 object-cover"
+          className="mt-2 w-full rounded-xl max-h-40 object-cover"
           onError={e => e.target.style.display = 'none'} />
       )}
 
-      {/* FIX 3: feedback only shows on resolved tickets */}
       {ticket.statut === 'Résolu' && (
         <FeedbackWidget
           ticket={ticket}
@@ -240,11 +268,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const [showNotifs,    setShowNotifs]    = useState(false)
   const notifRef = useRef(null)
 
-  // ── FIX 1: Notification fetch — query by ticket_id membership, not just nom ──
-  // We fetch all status_update notifications where the tracking_code belongs to
-  // this student. This works even if read_by_student column doesn't exist yet.
   const fetchNotifications = useCallback(async () => {
-    // First get the student's ticket tracking codes
     const { data: myTickets } = await supabase
       .from('tickets')
       .select('tracking_code')
@@ -269,7 +293,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     setLoadingTickets(true)
     const [{ data: td }, { data: fd }] = await Promise.all([
       supabase.from('tickets').select('*').eq('nom', student['Nom']).order('created_at', { ascending: false }),
-      // FIX 2: fetch feedbacks by nom too so we catch all of the student's feedback
       supabase.from('feedback').select('*').eq('nom', student['Nom']),
     ])
     if (td) setTickets(td)
@@ -283,20 +306,16 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
     const safeName = student['Nom'].replace(/[^a-zA-Z0-9]/g, '_')
 
-    // Listen for new status_update notifications whose tracking_code belongs
-    // to this student — handled by filtering inside the callback
     const notifChannel = supabase
       .channel('student-notifs-' + safeName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
         const n = payload.new
-        // Only care about status updates directed at this student
         if (n.type === 'status_update' && n.nom === student['Nom']) {
           setNotifications(prev => [n, ...prev])
         }
       })
       .subscribe()
 
-    // Listen for ticket updates (status changes, admin notes, etc.)
     const ticketChannel = supabase
       .channel('student-tickets-' + safeName)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, payload => {
@@ -307,13 +326,11 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
       })
       .subscribe()
 
-    // FIX 2: Listen for new feedback rows so dashboard updates in realtime
     const feedbackChannel = supabase
       .channel('student-feedback-' + safeName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, payload => {
         if (payload.new.nom === student['Nom']) {
           setFeedbacks(prev => {
-            // Avoid duplicates (we also insert locally below)
             if (prev.some(f => f.ticket_id === payload.new.ticket_id)) return prev
             return [...prev, payload.new]
           })
@@ -339,7 +356,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   const unreadNotifs = notifications.filter(n => !n.read_by_student).length
 
-  // FIX 1: mark notifications read using tracking_code IN list (no read_by_student dependency)
   const markNotifsRead = async () => {
     const unread = notifications.filter(n => !n.read_by_student)
     if (unread.length === 0) return
@@ -381,13 +397,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return data.publicUrl
   }
 
-  // ── FIX 3: Duplicate detection before submit ───────────────────────────────
-  // Normalise to English keys so "Électricité" and "Electricity" are the same.
   const checkDuplicate = async () => {
     const enProblemType = toEnKey(problemType)
     const enLocation    = toEnLoc(t.locations?.[location] || location)
 
-    // Fetch all non-resolved tickets for this student
     const { data } = await supabase
       .from('tickets')
       .select('id, problem_type, location, statut')
@@ -418,7 +431,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
       }
     }
 
-    // FIX 3: block duplicate before any network write
     setSubmitting(true)
     const duplicate = await checkDuplicate()
     if (duplicate) {
@@ -457,7 +469,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     }])
 
     if (!error) {
-      // Insert admin notification (dashboard picks this up via realtime)
       await supabase.from('notifications').insert([{
         tracking_code:  code,
         nom:            student['Nom'],
@@ -472,7 +483,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
     setTrackingCode(code)
     setView('success')
-    // Reset form
     setLocation(''); setProblemType(''); setPriority('')
     setDescription(''); setAvailability(''); setExactLocation('')
     setAvailabilityStart(''); setAvailabilityEnd('')
@@ -488,12 +498,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     else setTrackedTicket(data)
   }
 
-  // FIX 2: handleFeedbackSubmit now saves ALL required fields including tracking_code
-  // so the dashboard can join/display them correctly
   const handleFeedbackSubmit = async (ticket, rating, note) => {
     const { data, error } = await supabase.from('feedback').insert([{
       ticket_id:     ticket.id,
-      tracking_code: ticket.tracking_code,   // ← was missing — dashboard needs this
+      tracking_code: ticket.tracking_code,
       nom:           student['Nom'],
       chambre:       student['Chambre'],
       pavillon:      student['Pavillon'],
@@ -502,7 +510,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     }]).select().single()
 
     if (!error && data) {
-      // Update local state with the real DB row (has id, created_at, etc.)
       setFeedbacks(prev => {
         if (prev.some(f => f.ticket_id === data.ticket_id)) return prev
         return [...prev, data]
@@ -512,10 +519,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   // ── Shared UI components ───────────────────────────────────────────────────
   const Header = () => (
-    <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex justify-between items-center">
+    <div className="rounded-xl p-4 mb-4 flex justify-between items-center" style={glassCard}>
       <div>
-        <h1 className="font-bold text-base">🔧 {t.appTitle}</h1>
-        <p className="text-xs text-gray-400">
+        <h1 className="font-bold text-base" style={{color:'#f0f6ff'}}>🔧 {t.appTitle}</h1>
+        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.3)'}}>
           {student['Nom']} · {t.room} {student['Chambre']} · {t.pavilion} {student['Pavillon']}
         </p>
       </div>
@@ -524,7 +531,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
         <div className="flex gap-1">
           {languages.map(l => (
             <button key={l.code} onClick={() => setLang(l.code)}
-              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${lang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+              className="px-2 py-0.5 rounded-lg text-xs font-medium transition-all"
+              style={lang === l.code
+                ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}
+                :{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.08)'}}>
               {l.label}
             </button>
           ))}
@@ -534,48 +544,52 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markNotifsRead() }}
-            className="relative p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm">
-            🔔
+            className="relative p-1.5 rounded-lg transition-all"
+            style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+            <span style={{color:'rgba(255,255,255,0.5)'}}>🔔</span>
             {unreadNotifs > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+                style={{background:'#ef4444',fontSize:9}}>
                 {unreadNotifs > 9 ? '9+' : unreadNotifs}
               </span>
             )}
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-9 w-72 bg-white border rounded-xl shadow-lg z-30 overflow-hidden">
-              <div className="px-4 py-3 border-b flex justify-between items-center">
-                <span className="font-semibold text-sm">
+            <div className="absolute right-0 top-9 w-72 rounded-xl z-30 overflow-hidden"
+              style={{background:'rgba(10,14,23,0.98)',backdropFilter:'blur(20px)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
+              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+                <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
                   🔔 {lang === 'ar' ? 'الإشعارات' : lang === 'fr' ? 'Notifications' : 'Notifications'}
                 </span>
                 {notifications.length > 0 && (
-                  <button onClick={markNotifsRead} className="text-xs text-blue-500 hover:underline">
+                  <button onClick={markNotifsRead} className="text-xs transition-colors" style={{color:'#60a5fa'}}>
                     {lang === 'ar' ? 'تحديد كمقروء' : lang === 'fr' ? 'Tout lire' : 'Mark all read'}
                   </button>
                 )}
               </div>
-              <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+              <div className="max-h-64 overflow-y-auto divide-y" style={{borderColor:'rgba(255,255,255,0.04)'}}>
                 {notifications.length === 0 ? (
-                  <p className="text-center text-gray-400 text-sm py-6">
+                  <p className="text-center text-sm py-6" style={{color:'rgba(255,255,255,0.3)'}}>
                     {lang === 'ar' ? 'لا توجد إشعارات' : lang === 'fr' ? 'Aucune notification' : 'No notifications yet'}
                   </p>
                 ) : notifications.map((n, i) => (
                   <div key={n.id || i}
-                    className={`px-4 py-3 text-sm ${!n.read_by_student ? 'bg-blue-50' : 'bg-white'}`}>
+                    className="px-4 py-3 text-sm"
+                    style={{background:!n.read_by_student?'rgba(59,130,246,0.05)':'transparent'}}>
                     <div className="flex items-start gap-2">
                       {!n.read_by_student && (
-                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                        <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#60a5fa'}} />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-gray-700 text-xs font-medium leading-snug">
+                        <p className="text-xs font-medium leading-snug" style={{color:'rgba(255,255,255,0.7)'}}>
                           {n.message_student || (
                             lang === 'ar' ? `تم تحديث حالة طلبك ${n.tracking_code}`
                             : lang === 'fr' ? `Votre demande ${n.tracking_code} a été mise à jour`
                             : `Your request ${n.tracking_code} was updated`
                           )}
                         </p>
-                        <p className="text-gray-400 text-xs mt-0.5">
+                        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.25)'}}>
                           {new Date(n.created_at).toLocaleString()}
                         </p>
                       </div>
@@ -587,20 +601,22 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           )}
         </div>
 
-        <button onClick={onLogout} className="text-xs text-red-400 hover:underline">{t.logout}</button>
+        <button onClick={onLogout} className="text-xs transition-colors" style={{color:'#f87171'}}>{t.logout}</button>
       </div>
     </div>
   )
 
   const BottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex z-10">
+    <div className="fixed bottom-0 left-0 right-0 flex z-10" style={{background:'rgba(8,11,18,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
       {[
         { id: 'form',    icon: '✏️', label: t.newRequest },
         { id: 'tickets', icon: '📋', label: t.myTickets },
         { id: 'track',   icon: '🔍', label: t.trackNav },
       ].map(tab => (
         <button key={tab.id} onClick={() => setView(tab.id)}
-          className={`flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-colors ${view === tab.id ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-400'}`}>
+          className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-all"
+          style={{color: view === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                  borderTop: view === tab.id ? '2px solid #3b82f6' : '2px solid transparent'}}>
           <span style={{ fontSize: 16 }}>{tab.icon}</span>
           {tab.label}
         </button>
@@ -612,22 +628,24 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   if (view === 'success') {
     return (
-      <div dir={t.dir} className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow p-8 text-center max-w-sm w-full">
+      <div dir={t.dir} className="min-h-screen flex items-center justify-center p-4" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
+        <div className="rounded-2xl p-8 text-center max-w-sm w-full" style={{...glassCard,boxShadow:'0 32px 80px rgba(0,0,0,0.5)'}}>
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-bold mb-2">{t.successTitle}</h2>
-          <p className="text-gray-500 text-sm mb-6">{t.successMsg}</p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
-            <p className="text-xs text-blue-500 mb-1">{t.trackingCode}</p>
-            <p className="text-2xl font-mono font-bold text-blue-700 tracking-widest">{trackingCode}</p>
+          <h2 className="text-xl font-bold mb-2" style={{color:'#f0f6ff'}}>{t.successTitle}</h2>
+          <p className="text-sm mb-6" style={{color:'rgba(255,255,255,0.4)'}}>{t.successMsg}</p>
+          <div className="rounded-xl p-4 mb-2" style={{background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.2)'}}>
+            <p className="text-xs mb-1" style={{color:'rgba(96,165,250,0.6)'}}>{t.trackingCode}</p>
+            <p className="text-2xl font-mono font-bold tracking-widest" style={{color:'#60a5fa'}}>{trackingCode}</p>
           </div>
-          <p className="text-xs text-gray-400 mb-6">{t.screenshotNote}</p>
+          <p className="text-xs mb-6" style={{color:'rgba(255,255,255,0.25)'}}>{t.screenshotNote}</p>
           <button onClick={() => setView('form')}
-            className="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 mb-3 text-sm">
+            className="w-full py-2.5 rounded-xl text-sm font-medium mb-3 transition-all"
+            style={{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}}>
             {t.trackAnother}
           </button>
           <button onClick={() => { fetchTickets(); setView('tickets') }}
-            className="w-full border border-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-50 text-sm">
+            className="w-full py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.5)',border:'1px solid rgba(255,255,255,0.08)'}}>
             {t.myTickets}
           </button>
         </div>
@@ -637,70 +655,74 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   if (view === 'track') {
     return (
-      <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
+      <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
           <Header />
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="font-bold text-lg mb-4">{t.trackTitle}</h2>
+          <div className="rounded-xl p-6" style={glassCard}>
+            <h2 className="font-bold text-lg mb-4" style={{color:'#f0f6ff'}}>{t.trackTitle}</h2>
             <div className="flex gap-2 mb-4">
               <input
-                className="flex-1 border rounded-lg p-2 text-sm font-mono uppercase"
+                className="flex-1 rounded-xl p-2 text-sm font-mono uppercase focus:outline-none transition-all"
+                style={glassInput}
                 placeholder={t.trackPlaceholder}
                 value={trackInput}
                 onChange={e => setTrackInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleTrack()}
               />
               <button onClick={handleTrack}
-                className="bg-blue-600 text-white px-4 rounded-lg text-sm hover:bg-blue-700">
+                className="px-4 rounded-xl text-sm font-medium transition-all"
+                style={{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}}>
                 {t.trackBtn}
               </button>
             </div>
 
-            {trackError && <p className="text-red-500 text-sm">{trackError}</p>}
+            {trackError && <p className="text-sm" style={{color:'#f87171'}}>{trackError}</p>}
 
             {trackedTicket && (
-              <div className="border rounded-xl p-4 space-y-2">
+              <div className="rounded-xl p-4 space-y-2" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)'}}>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-mono text-sm font-bold text-blue-600">{trackedTicket.tracking_code}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${statusColors[trackedTicket.statut] || 'bg-gray-100 text-gray-600'}`}>
+                  <span className="font-mono text-sm font-bold" style={{color:'#60a5fa'}}>{trackedTicket.tracking_code}</span>
+                  <span className="text-xs px-2 py-1 rounded-full font-medium"
+                    style={{background:statusBg[trackedTicket.statut],color:trackedTicket.statut==='En attente'?'#fbbf24':trackedTicket.statut==='En cours'?'#60a5fa':'#34d399',border:`1px solid ${statusBorder[trackedTicket.statut]}`}}>
                     {tf(trackedTicket.statut, lang, SM)}
                   </span>
                 </div>
-                <div className="text-sm space-y-1.5 text-gray-600">
-                  <p>📍 <span className="font-medium">{t.locationLabel}:</span> {tf(trackedTicket.location, lang, LM)}</p>
+                <div className="text-sm space-y-1.5" style={{color:'rgba(255,255,255,0.5)'}}>
+                  <p>📍 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.locationLabel}:</span> {tf(trackedTicket.location, lang, LM)}</p>
                   {trackedTicket.exact_location && (
-                    <p className="ml-5 text-xs text-gray-400">{trackedTicket.exact_location}</p>
+                    <p className="ml-5 text-xs" style={{color:'rgba(255,255,255,0.3)'}}>{trackedTicket.exact_location}</p>
                   )}
-                  <p>🔧 <span className="font-medium">{t.typeLabel}:</span> {tf(trackedTicket.problem_type, lang, PM)}</p>
-                  <p>⚡ <span className="font-medium">{t.priorityLabel}:</span>
-                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs border ${priorityColors[trackedTicket.priorite] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                  <p>🔧 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.typeLabel}:</span> {tf(trackedTicket.problem_type, lang, PM)}</p>
+                  <p>⚡ <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.priorityLabel}:</span>
+                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${priorityColors[trackedTicket.priorite]}`}
+                      style={{background:priorityBg[trackedTicket.priorite]}}>
                       {tf(trackedTicket.priorite, lang, PrioM)}
                     </span>
                   </p>
-                  <p>📝 <span className="font-medium">{t.descLabel}:</span> {trackedTicket.description}</p>
+                  <p>📝 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.descLabel}:</span> {trackedTicket.description}</p>
                   {trackedTicket.availability && (
-                    <p>🕐 <span className="font-medium">{t.availabilityLabel}:</span> {trackedTicket.availability}</p>
+                    <p>🕐 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.availabilityLabel}:</span> {trackedTicket.availability}</p>
                   )}
-                  <p>📅 <span className="font-medium">{t.dateLabel}:</span> {new Date(trackedTicket.created_at).toLocaleDateString()}</p>
+                  <p>📅 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.dateLabel}:</span> {new Date(trackedTicket.created_at).toLocaleDateString()}</p>
                   {trackedTicket.resolved_at && (
-                    <p>✅ <span className="font-medium">
+                    <p style={{color:'#34d399'}}>✅ <span className="font-medium">
                       {lang === 'ar' ? 'تاريخ الحل' : lang === 'fr' ? 'Résolu le' : 'Resolved'}:
                     </span> {new Date(trackedTicket.resolved_at).toLocaleString()}</p>
                   )}
                 </div>
 
                 {trackedTicket.admin_note && (
-                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                    <p className="text-xs font-medium text-blue-600 mb-1">
+                  <div className="rounded-xl p-3" style={{background:'rgba(59,130,246,0.05)',border:'1px solid rgba(59,130,246,0.15)'}}>
+                    <p className="text-xs font-medium mb-1" style={{color:'rgba(96,165,250,0.7)'}}>
                       📋 {lang === 'ar' ? 'ملاحظة الإدارة' : lang === 'fr' ? 'Note admin' : 'Note from admin'}
                     </p>
-                    <p className="text-sm text-blue-700">{trackedTicket.admin_note}</p>
+                    <p className="text-sm" style={{color:'#93c5fd'}}>{trackedTicket.admin_note}</p>
                   </div>
                 )}
 
                 {trackedTicket.image_url && (
                   <img src={trackedTicket.image_url} alt="ticket"
-                    className="w-full rounded-lg mt-2 max-h-48 object-cover"
+                    className="w-full rounded-xl mt-2 max-h-48 object-cover"
                     onError={e => e.target.style.display = 'none'} />
                 )}
 
@@ -724,14 +746,14 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   if (view === 'tickets') {
     return (
-      <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
+      <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
           <Header />
           {loadingTickets && (
-            <p className="text-center text-gray-400 text-sm py-8">...</p>
+            <p className="text-center text-sm py-8" style={{color:'rgba(255,255,255,0.3)'}}>...</p>
           )}
           {!loadingTickets && tickets.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center text-gray-400 text-sm">
+            <div className="rounded-xl p-8 text-center text-sm" style={{...glassCard,color:'rgba(255,255,255,0.3)'}}>
               {t.noTickets}
             </div>
           )}
@@ -759,18 +781,21 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const timeError         = availabilityStart && availabilityEnd && availabilityEnd <= availabilityStart
 
   return (
-    <div dir={t.dir} className="min-h-screen bg-gray-50 pb-20">
+    <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
       <div className="max-w-lg mx-auto p-4">
         <Header />
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-5">
+        <div className="rounded-xl p-6 space-y-5" style={glassCard}>
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t.location} *</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.location} *</label>
             <div className="flex gap-2">
               {Object.entries(t.locations).map(([key, label]) => (
                 <button key={key} onClick={() => setLocation(key)}
-                  className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-colors ${location === key ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                  className="flex-1 p-2 rounded-xl text-sm font-medium transition-all"
+                  style={location === key
+                    ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.4)'}
+                    :{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.5)',border:'1px solid rgba(255,255,255,0.08)'}}>
                   {label}
                 </button>
               ))}
@@ -779,17 +804,18 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
           {/* Exact location */}
           {location && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">
+            <div className="rounded-xl p-3" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)'}}>
+              <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.3)'}}>
                 📍 {lang === 'ar' ? 'الموقع الدقيق' : lang === 'fr' ? 'Emplacement exact' : 'Exact location'}
               </p>
               {location === 'room' ? (
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium" style={{color:'#e2e8f0'}}>
                   {t.room} {student['Chambre']} — {t.pavilion} {student['Pavillon']}
                 </p>
               ) : (
                 <input
-                  className="w-full bg-white border rounded-lg p-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-lg p-2 text-sm mt-1 focus:outline-none transition-all"
+                  style={glassInput}
                   placeholder={t.exactLocationPlaceholder?.[location] || ''}
                   value={exactLocation}
                   onChange={e => setExactLocation(e.target.value)}
@@ -801,11 +827,14 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           {/* Problem type */}
           {location && t.problemTypes?.[location] && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t.problemType} *</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.problemType} *</label>
               <div className="grid grid-cols-2 gap-2">
                 {t.problemTypes[location].map(type => (
                   <button key={type} onClick={() => setProblemType(type)}
-                    className={`p-2 rounded-lg border text-sm text-start transition-colors ${problemType === type ? 'bg-blue-50 border-blue-400 text-blue-700 font-medium' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    className="p-2 rounded-xl text-sm text-start transition-all"
+                    style={problemType === type
+                      ?{background:'rgba(59,130,246,0.15)',color:'#93c5fd',border:'1px solid rgba(59,130,246,0.35)'}
+                      :{background:'rgba(255,255,255,0.03)',color:'rgba(255,255,255,0.5)',border:'1px solid rgba(255,255,255,0.07)'}}>
                     {type}
                   </button>
                 ))}
@@ -817,20 +846,22 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           {priority && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">{t.priorityAuto}:</span>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium border ${priorityColors[priority]}`}>
+                <span className="text-xs" style={{color:'rgba(255,255,255,0.3)'}}>{t.priorityAuto}:</span>
+                <span className={`text-xs px-3 py-1 rounded-full font-medium ${priorityColors[priority]}`}
+                  style={{background:priorityBg[priority]}}>
                   {tf(priority, lang, PrioM)}
                 </span>
               </div>
-              {isHighPriority && <p className="text-xs text-red-500">{t.priorityHighNote}</p>}
+              {isHighPriority && <p className="text-xs" style={{color:'#f87171'}}>{t.priorityHighNote}</p>}
             </div>
           )}
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.description} *</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>{t.description} *</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-xl p-3 text-sm h-28 resize-none focus:outline-none transition-all"
+              style={glassInput}
               placeholder={t.descriptionPlaceholder}
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -840,34 +871,39 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           {/* Availability */}
           {needsAvailability && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.availability} *</label>
-              <p className="text-xs text-gray-400 mb-3">{t.availabilityNote}</p>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>{t.availability} *</label>
+              <p className="text-xs mb-3" style={{color:'rgba(255,255,255,0.3)'}}>{t.availabilityNote}</p>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">{t.dir === 'rtl' ? 'من' : 'From'}</label>
+                  <label className="block text-xs mb-1" style={{color:'rgba(255,255,255,0.3)'}}>{t.dir === 'rtl' ? 'من' : 'From'}</label>
                   <input type="time" min="08:00" max="17:00"
-                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-xl p-2 text-sm focus:outline-none transition-all"
+                    style={glassInput}
                     value={availabilityStart}
                     onChange={e => { setAvailabilityStart(e.target.value); setAvailability('') }} />
                 </div>
-                <span className="text-gray-400 pb-2">→</span>
+                <span className="pb-2" style={{color:'rgba(255,255,255,0.3)'}}>→</span>
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">{t.dir === 'rtl' ? 'إلى' : 'To'}</label>
+                  <label className="block text-xs mb-1" style={{color:'rgba(255,255,255,0.3)'}}>{t.dir === 'rtl' ? 'إلى' : 'To'}</label>
                   <input type="time" min="08:00" max="17:00"
-                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-xl p-2 text-sm focus:outline-none transition-all"
+                    style={glassInput}
                     value={availabilityEnd}
                     onChange={e => { setAvailabilityEnd(e.target.value); setAvailability('') }} />
                 </div>
               </div>
               {timeError && (
-                <p className="text-red-400 text-xs mt-1">
+                <p className="text-xs mt-1" style={{color:'#f87171'}}>
                   {t.dir === 'rtl' ? 'وقت النهاية يجب أن يكون بعد وقت البداية' : 'End time must be after start time'}
                 </p>
               )}
               {isHighPriority && (
                 <button
                   onClick={() => { setAvailabilityStart(''); setAvailabilityEnd(''); setAvailability(nightShiftLabel[lang]) }}
-                  className={`mt-3 w-full p-2 rounded-lg border text-sm transition-colors ${availability === nightShiftLabel[lang] ? 'bg-red-600 text-white border-red-600' : 'border-red-200 text-red-500 hover:bg-red-50'}`}>
+                  className="mt-3 w-full p-2 rounded-xl text-sm transition-all"
+                  style={availability === nightShiftLabel[lang]
+                    ?{background:'rgba(239,68,68,0.2)',color:'#f87171',border:'1px solid rgba(239,68,68,0.3)'}
+                    :{background:'rgba(239,68,68,0.06)',color:'rgba(248,113,113,0.7)',border:'1px solid rgba(239,68,68,0.15)'}}>
                   {nightShiftLabel[lang]}
                 </button>
               )}
@@ -876,27 +912,29 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
           {/* Image */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.image}</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>{t.image}</label>
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif"
               ref={fileRef} className="hidden" onChange={handleImageChange} />
             <button onClick={() => fileRef.current.click()}
-              className="w-full border-2 border-dashed border-gray-200 rounded-lg p-4 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-400 transition-colors">
+              className="w-full border-2 border-dashed rounded-xl p-4 text-sm transition-all"
+              style={{borderColor:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.02)'}}>
               {imageFile ? `✅ ${t.imageSelected}: ${imageFile.name}` : `📷 ${t.imageBtn}`}
             </button>
             {imagePreview && (
-              <img src={imagePreview} alt="preview" className="mt-2 w-full rounded-lg max-h-40 object-cover" />
+              <img src={imagePreview} alt="preview" className="mt-2 w-full rounded-xl max-h-40 object-cover" />
             )}
           </div>
 
           {/* Error / duplicate message */}
           {message && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-600 text-sm">{message}</p>
+            <div className="rounded-xl px-4 py-3" style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)'}}>
+              <p className="text-sm" style={{color:'#fca5a5'}}>{message}</p>
             </div>
           )}
 
           <button onClick={handleSubmit} disabled={submitting || !!timeError}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            className="w-full py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50"
+            style={{background:'linear-gradient(135deg, #3b82f6, #6366f1)',color:'#fff',boxShadow:'0 8px 24px rgba(59,130,246,0.25)'}}>
             {submitting ? '...' : t.submit}
           </button>
         </div>

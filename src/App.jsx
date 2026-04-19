@@ -44,46 +44,96 @@ export default function App() {
   )
 
   return (
-    <div dir={t.dir} className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-md w-96">
+    <div dir={t.dir} className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 40%, #0a0e1a 100%)'}}>
+      {/* Ambient background orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-20" style={{background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)', filter: 'blur(60px)'}} />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-15" style={{background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)', filter: 'blur(60px)'}} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full opacity-10" style={{background: 'radial-gradient(circle, #0ea5e9 0%, transparent 70%)', filter: 'blur(80px)'}} />
+      </div>
 
-        <div className="flex justify-end gap-2 mb-6">
-          {languages.map(l => (
-            <button key={l.code} onClick={() => setLang(l.code)}
-              className={`px-3 py-1 rounded text-sm font-medium border transition-colors ${
-                lang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}>
-              {l.label}
-            </button>
-          ))}
-        </div>
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
 
-        <h1 className="text-2xl font-bold mb-1">🔧 {t.appTitle}</h1>
-        <p className="text-gray-500 text-sm mb-6">{t.appSubtitle}</p>
+      <div className="relative z-10 w-full max-w-md px-4">
+        {/* Card */}
+        <div className="rounded-2xl overflow-hidden" style={{background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)'}}>
+          {/* Top accent bar */}
+          <div className="h-0.5 w-full" style={{background: 'linear-gradient(90deg, transparent, #3b82f6, #6366f1, transparent)'}} />
 
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t.bacMatricule}</label>
-        <input className="w-full border p-2 mb-4 rounded-lg"
-          placeholder={t.bacMatriculePlaceholder}
-          onChange={e => setMatriculeBac(e.target.value)} />
+          <div className="p-8">
+            {/* Language switcher */}
+            <div className="flex justify-end gap-1.5 mb-8">
+              {languages.map(l => (
+                <button key={l.code} onClick={() => setLang(l.code)}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200"
+                  style={lang === l.code
+                    ? {background: 'rgba(59,130,246,0.25)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.4)'}
+                    : {background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)'}}>
+                  {l.label}
+                </button>
+              ))}
+            </div>
 
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t.bacYear}</label>
-        <input className="w-full border p-2 mb-6 rounded-lg"
-          placeholder={t.bacYearPlaceholder} type="number"
-          onChange={e => setAnneeBac(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)'}}>
+                  🔧
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight" style={{color: '#f0f6ff'}}>{t.appTitle}</h1>
+                  <p className="text-xs mt-0.5" style={{color: 'rgba(255,255,255,0.35)'}}>{t.appSubtitle}</p>
+                </div>
+              </div>
+            </div>
 
-        <button onClick={handleStudentLogin}
-          className="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700">
-          {t.login}
-        </button>
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color: 'rgba(255,255,255,0.4)'}}>{t.bacMatricule}</label>
+                <input
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200"
+                  style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', caretColor: '#60a5fa'}}
+                  onFocus={e => e.target.style.border = '1px solid rgba(59,130,246,0.5)'}
+                  onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                  placeholder={t.bacMatriculePlaceholder}
+                  onChange={e => setMatriculeBac(e.target.value)} />
+              </div>
 
-        {message && <p className="mt-4 text-sm text-center text-red-500">{message}</p>}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color: 'rgba(255,255,255,0.4)'}}>{t.bacYear}</label>
+                <input
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200"
+                  style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', caretColor: '#60a5fa'}}
+                  onFocus={e => e.target.style.border = '1px solid rgba(59,130,246,0.5)'}
+                  onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                  placeholder={t.bacYearPlaceholder} type="number"
+                  onChange={e => setAnneeBac(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
+              </div>
 
-        <div className="mt-8 pt-4 border-t text-center">
-          <button onClick={() => setShowAdminLogin(true)}
-            className="text-xs text-gray-300 hover:text-gray-500 transition-colors">
-            Accès administration
-          </button>
+              <button onClick={handleStudentLogin}
+                className="w-full py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 mt-2"
+                style={{background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', boxShadow: '0 8px 24px rgba(59,130,246,0.35)'}}>
+                {t.login}
+              </button>
+            </div>
+
+            {message && (
+              <div className="mt-4 rounded-xl px-4 py-3 text-xs text-center" style={{background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5'}}>
+                {message}
+              </div>
+            )}
+
+            <div className="mt-8 pt-6" style={{borderTop: '1px solid rgba(255,255,255,0.06)'}}>
+              <button onClick={() => setShowAdminLogin(true)}
+                className="w-full text-center text-xs transition-colors duration-200"
+                style={{color: 'rgba(255,255,255,0.2)'}}>
+                Accès administration
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

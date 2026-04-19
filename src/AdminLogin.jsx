@@ -74,7 +74,6 @@ export default function AdminLogin({ onLogin, onBack }) {
     if (!username || !password) { setMessage(txt.errorEmpty); return }
     setLoading(true)
 
-    // Debug: log what we're querying
     console.log('Trying login with username:', username)
 
     const { data, error } = await supabase
@@ -101,73 +100,93 @@ export default function AdminLogin({ onLogin, onBack }) {
   }
 
   return (
-    <div dir={txt.dir} className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-10">
+    <div dir={txt.dir} className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 40%, #0a0e1a 100%)'}}>
+      {/* Ambient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-15" style={{background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)', filter: 'blur(60px)'}} />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full opacity-15" style={{background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)', filter: 'blur(60px)'}} />
+      </div>
+      <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
 
-        {/* Language switcher */}
-        <div className="flex justify-end gap-2 mb-6">
-          {languages.map(l => (
-            <button key={l.code} onClick={() => setLang(l.code)}
-              className={`px-3 py-1 rounded text-sm font-medium border transition-colors ${
-                lang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}>
-              {l.label}
-            </button>
-          ))}
-        </div>
+      <div className="relative z-10 w-full max-w-md px-4">
+        <div className="rounded-2xl overflow-hidden" style={{background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)'}}>
+          <div className="h-0.5 w-full" style={{background: 'linear-gradient(90deg, transparent, #6366f1, #3b82f6, transparent)'}} />
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <span style={{ fontSize: 28 }}>🔧</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">{txt.title}</h1>
-          <p className="text-gray-400 text-sm mt-1">{txt.subtitle}</p>
-        </div>
-
-        {/* Form */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{txt.username}</label>
-            <input
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-              placeholder={txt.usernamePlaceholder}
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{txt.password}</label>
-            <input
-              type="password"
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-              placeholder={txt.passwordPlaceholder}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            />
-          </div>
-
-          {message && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-              <p className="text-red-600 text-sm">{message}</p>
+          <div className="p-8">
+            {/* Language switcher */}
+            <div className="flex justify-end gap-1.5 mb-8">
+              {languages.map(l => (
+                <button key={l.code} onClick={() => setLang(l.code)}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200"
+                  style={lang === l.code
+                    ? {background: 'rgba(99,102,241,0.25)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.4)'}
+                    : {background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)'}}>
+                  {l.label}
+                </button>
+              ))}
             </div>
-          )}
 
-          <button onClick={handleLogin} disabled={loading}
-            className="w-full bg-blue-600 text-white p-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors mt-2">
-            {loading ? txt.loggingIn : txt.loginBtn}
-          </button>
-        </div>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 text-2xl" style={{background: 'linear-gradient(135deg, #6366f1, #3b82f6)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)'}}>
+                🔧
+              </div>
+              <h1 className="text-xl font-bold tracking-tight" style={{color: '#f0f6ff'}}>{txt.title}</h1>
+              <p className="text-xs mt-1" style={{color: 'rgba(255,255,255,0.35)'}}>{txt.subtitle}</p>
+            </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">{txt.footer}</p>
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color: 'rgba(255,255,255,0.4)'}}>{txt.username}</label>
+                <input
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200"
+                  style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', caretColor: '#a5b4fc'}}
+                  onFocus={e => e.target.style.border = '1px solid rgba(99,102,241,0.5)'}
+                  onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                  placeholder={txt.usernamePlaceholder}
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
 
-        <div className="mt-4 text-center">
-          <button onClick={onBack} className="text-xs text-gray-400 hover:text-gray-600 underline">
-            {txt.back}
-          </button>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color: 'rgba(255,255,255,0.4)'}}>{txt.password}</label>
+                <input
+                  type="password"
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all duration-200"
+                  style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', caretColor: '#a5b4fc'}}
+                  onFocus={e => e.target.style.border = '1px solid rgba(99,102,241,0.5)'}
+                  onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                  placeholder={txt.passwordPlaceholder}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+
+              {message && (
+                <div className="rounded-xl px-4 py-3 text-xs" style={{background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5'}}>
+                  {message}
+                </div>
+              )}
+
+              <button onClick={handleLogin} disabled={loading}
+                className="w-full py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 disabled:opacity-50 mt-2"
+                style={{background: 'linear-gradient(135deg, #6366f1, #3b82f6)', color: '#fff', boxShadow: '0 8px 24px rgba(99,102,241,0.35)'}}>
+                {loading ? txt.loggingIn : txt.loginBtn}
+              </button>
+            </div>
+
+            <p className="text-center text-xs mt-6" style={{color: 'rgba(255,255,255,0.2)'}}>{txt.footer}</p>
+
+            <div className="mt-4 pt-4 text-center" style={{borderTop: '1px solid rgba(255,255,255,0.06)'}}>
+              <button onClick={onBack} className="text-xs transition-colors duration-200" style={{color: 'rgba(255,255,255,0.25)'}}>
+                {txt.back}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

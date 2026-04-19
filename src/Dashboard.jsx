@@ -56,6 +56,14 @@ const LM = {
 }
 const tf = (v,lang,map) => map[v]?.[lang] ?? v
 
+// All problem types flat list for dropdowns
+const ALL_PROBLEM_TYPES = [
+  'Electricity','Heating','Furniture','Door / Window','Other',
+  'Lighting','Doors','Security','Cleanliness',
+  'Plumbing','Water Leakage',
+]
+const ALL_LOCATIONS = ['Room','Pavilion','Toilets']
+
 // ─── Translations ──────────────────────────────────────────────────────────────
 const T = {
   en:{dir:'ltr',title:'Dashboard',serviceManager:'Service Manager',
@@ -69,7 +77,7 @@ const T = {
     priorities:{High:'High',Medium:'Medium',Low:'Low'},
     statuses:{'En attente':'Pending','En cours':'In Progress','Résolu':'Resolved'},
     logout:'Logout',notifications:'Notifications',noNotifs:'No notifications',
-    markRead:'Mark all read',newTicket:'New ticket',
+    markRead:'Mark all read',newTicket:'New Ticket',
     exportBtn:'Export',exportAll:'Export all',exportFiltered:'Export filtered',
     charts:'Analytics',image:'Photo',
     repairsByType:'By type',repairsByLocation:'By location',topRooms:'Top rooms',
@@ -89,6 +97,16 @@ const T = {
     filterPavillon:'Pavilion',filterStatus:'Status',filterPriority:'Priority',
     filterType:'Problem type',filterLocation:'Location',filterAll:'All',
     clearFilters:'Clear',activeFilters:'filter',activeFiltersPlural:'filters',
+    // New ticket modal
+    newTicketTitle:'Add New Ticket',newTicketStudent:'Student name',newTicketRoom:'Room',
+    newTicketPavillon:'Pavilion',newTicketLocation:'Location',newTicketType:'Problem type',
+    newTicketPriority:'Priority',newTicketDesc:'Description',newTicketAvail:'Availability (optional)',
+    newTicketExact:'Exact location',newTicketSubmit:'Create Ticket',newTicketCancel:'Cancel',
+    newTicketSuccess:'Ticket created!',newTicketError:'Error creating ticket.',
+    // Edit ticket modal
+    editTicketTitle:'Edit Ticket',editTicketSave:'Save changes',editTicketCancel:'Cancel',
+    editTicketSuccess:'Ticket updated!',editTicketError:'Error updating ticket.',
+    editTicketDelete:'Delete ticket',editTicketDeleteConfirm:'Are you sure you want to delete this ticket? This action cannot be undone.',
   },
   fr:{dir:'ltr',title:'Tableau de bord',serviceManager:'Chef de service',
     total:'Total',pending:'En attente',inProgress:'En cours',resolved:'Résolus',urgent:'Urgents',
@@ -116,11 +134,19 @@ const T = {
     printAll:'Imprimer tout',printFiltered:'Imprimer filtré',
     addWorkerTitle:'Ajouter un ouvrier',addWorkerName:'Nom',addWorkerFirst:'Prénom',
     addWorkerMatricule:'Matricule',addWorkerGrade:'Grade',addWorkerBtn:'Ajouter',
-    addWorkerSaved:'Ouvrier ajouté !',addWorkerError:'Erreur lors de l\'ajout.',
+    addWorkerSaved:'Ouvrier ajouté !',addWorkerError:"Erreur lors de l'ajout.",
     filtersTitle:'Filtres',filterDate:'Plage de dates',filterFrom:'Du',filterTo:'Au',
     filterPavillon:'Pavillon',filterStatus:'Statut',filterPriority:'Priorité',
     filterType:'Type de problème',filterLocation:'Emplacement',filterAll:'Tous',
     clearFilters:'Effacer',activeFilters:'filtre actif',activeFiltersPlural:'filtres actifs',
+    newTicketTitle:'Ajouter un ticket',newTicketStudent:'Nom de l\'étudiant',newTicketRoom:'Chambre',
+    newTicketPavillon:'Pavillon',newTicketLocation:'Emplacement',newTicketType:'Type de problème',
+    newTicketPriority:'Priorité',newTicketDesc:'Description',newTicketAvail:'Disponibilité (optionnel)',
+    newTicketExact:'Emplacement exact',newTicketSubmit:'Créer le ticket',newTicketCancel:'Annuler',
+    newTicketSuccess:'Ticket créé !',newTicketError:'Erreur lors de la création.',
+    editTicketTitle:'Modifier le ticket',editTicketSave:'Enregistrer',editTicketCancel:'Annuler',
+    editTicketSuccess:'Ticket mis à jour !',editTicketError:'Erreur lors de la mise à jour.',
+    editTicketDelete:'Supprimer',editTicketDeleteConfirm:'Êtes-vous sûr de vouloir supprimer ce ticket ? Cette action est irréversible.',
   },
   ar:{dir:'rtl',title:'لوحة التحكم',serviceManager:'رئيس المصلحة',
     total:'المجموع',pending:'قيد الانتظار',inProgress:'جارٍ',resolved:'تم الحل',urgent:'عاجل',
@@ -153,6 +179,14 @@ const T = {
     filterPavillon:'الجناح',filterStatus:'الحالة',filterPriority:'الأولوية',
     filterType:'نوع المشكلة',filterLocation:'الموقع',filterAll:'الكل',
     clearFilters:'مسح',activeFilters:'فلتر نشط',activeFiltersPlural:'فلاتر نشطة',
+    newTicketTitle:'إضافة طلب جديد',newTicketStudent:'اسم الطالب',newTicketRoom:'الغرفة',
+    newTicketPavillon:'الجناح',newTicketLocation:'الموقع',newTicketType:'نوع المشكلة',
+    newTicketPriority:'الأولوية',newTicketDesc:'الوصف',newTicketAvail:'التوفر (اختياري)',
+    newTicketExact:'الموقع الدقيق',newTicketSubmit:'إنشاء الطلب',newTicketCancel:'إلغاء',
+    newTicketSuccess:'تم إنشاء الطلب!',newTicketError:'خطأ في الإنشاء.',
+    editTicketTitle:'تعديل الطلب',editTicketSave:'حفظ التعديلات',editTicketCancel:'إلغاء',
+    editTicketSuccess:'تم تحديث الطلب!',editTicketError:'خطأ في التحديث.',
+    editTicketDelete:'حذف الطلب',editTicketDeleteConfirm:'هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.',
   },
 }
 
@@ -164,6 +198,21 @@ const DEFAULT_SETTINGS = {
 const SC = {'En attente':'bg-gray-100 text-gray-600','En cours':'bg-blue-100 text-blue-700','Résolu':'bg-green-100 text-green-700'}
 const PC = {High:'bg-red-100 text-red-700',Medium:'bg-yellow-100 text-yellow-700',Low:'bg-green-100 text-green-700'}
 const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-yellow-400',Low:'border-l-[3px] border-green-400'}
+
+function generateTrackingCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = 'RQ-'
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
+  return code
+}
+
+function assignPriority(type) {
+  const high = ['Electricity','Électricité','الكهرباء','Water Leakage',"Fuite d'eau",'تسرب المياه','Security','Sécurité','الأمن','Door / Window','Porte / Fenêtre','باب / نافذة']
+  const medium = ['Heating','Chauffage','التدفئة','Plumbing','Plomberie','السباكة','Lighting','Éclairage','الإضاءة','Doors','Portes','الأبواب']
+  if (high.includes(type)) return 'High'
+  if (medium.includes(type)) return 'Medium'
+  return 'Low'
+}
 
 // ─── Mini charts ───────────────────────────────────────────────────────────────
 function Donut({slices,size=96}){
@@ -213,8 +262,8 @@ function Toast({toasts,onDismiss}){
           style={{animation:'slideInRight .3s ease'}}>
           <span style={{fontSize:18}}>🔔</span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">{t.nom}</p>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{t.problem_type} · {t.tracking_code}</p>
+            <p className="text-sm font-semibold text-gray-800 truncate">{t.title||t.nom}</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{t.body||''}</p>
           </div>
           <button onClick={()=>onDismiss(t.id)} className="text-gray-300 hover:text-gray-500 shrink-0">✕</button>
         </div>
@@ -270,8 +319,387 @@ function WorkerPicker({workers,selected,onChange,txt}){
   )
 }
 
-// ─── Ticket modal ──────────────────────────────────────────────────────────────
-function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating}){
+// ─── NEW TICKET MODAL ──────────────────────────────────────────────────────────
+function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
+  const [form, setForm] = useState({
+    nom: '', chambre: '', pavillon: '', location: 'Room',
+    exact_location: '', problem_type: 'Electricity', priorite: 'High',
+    description: '', availability: '', statut: 'En attente',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+  const [selWorkers, setSelWorkers] = useState([])
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Auto-assign priority when type changes
+  useEffect(() => {
+    set('priorite', assignPriority(form.problem_type))
+  }, [form.problem_type])
+
+  const handleSubmit = async () => {
+    setError('')
+    if (!form.nom.trim() || !form.chambre.trim() || !form.pavillon.trim() || !form.description.trim()) {
+      setError(lang === 'ar' ? 'يرجى ملء جميع الحقول الإلزامية' : lang === 'fr' ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields')
+      return
+    }
+    setSaving(true)
+    const code = generateTrackingCode()
+    const { data, error: err } = await supabase.from('tickets').insert([{
+      tracking_code:  code,
+      nom:            form.nom.trim(),
+      chambre:        form.chambre.trim(),
+      pavillon:       form.pavillon.trim(),
+      location:       form.location,
+      exact_location: form.exact_location.trim() || null,
+      problem_type:   form.problem_type,
+      priorite:       form.priorite,
+      description:    form.description.trim(),
+      availability:   form.availability.trim() || null,
+      statut:         form.statut,
+      assigned_workers: selWorkers.length ? JSON.stringify(selWorkers) : null,
+    }]).select().single()
+    setSaving(false)
+    if (err) { setError(txt.newTicketError + ' ' + err.message); return }
+    await supabase.from('notifications').insert([{
+      ticket_id: data.id, tracking_code: code, nom: form.nom.trim(),
+      message_admin: `${form.nom} — ${form.problem_type} (admin créé)`,
+      type: 'new_ticket', read_by_admin: true,
+    }])
+    addToast({ id: Date.now(), title: txt.newTicketSuccess, body: `${form.nom} · ${code}` })
+    onCreated(data)
+    onClose()
+  }
+
+  const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const labelCls = "block text-xs font-medium text-gray-500 mb-1"
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg">+</div>
+            <h2 className="font-semibold text-gray-800 text-lg">{txt.newTicketTitle}</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Student info */}
+          <div className="bg-blue-50 rounded-xl p-4">
+            <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-3">
+              {lang==='ar'?'معلومات الطالب':lang==='fr'?"Infos de l'étudiant":'Student Info'}
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-1">
+                <label className={labelCls}>{txt.newTicketStudent} *</label>
+                <input className={inputCls} value={form.nom} onChange={e=>set('nom',e.target.value)} placeholder="Nom complet" />
+              </div>
+              <div>
+                <label className={labelCls}>{txt.newTicketRoom} *</label>
+                <input className={inputCls} value={form.chambre} onChange={e=>set('chambre',e.target.value)} placeholder="ex: 214" />
+              </div>
+              <div>
+                <label className={labelCls}>{txt.newTicketPavillon} *</label>
+                <input className={inputCls} value={form.pavillon} onChange={e=>set('pavillon',e.target.value)} placeholder="ex: A" />
+              </div>
+            </div>
+          </div>
+
+          {/* Problem details */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.newTicketLocation}</label>
+              <select className={inputCls} value={form.location} onChange={e=>set('location',e.target.value)}>
+                {ALL_LOCATIONS.map(l=><option key={l} value={l}>{tf(l,lang,LM)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{txt.newTicketExact}</label>
+              <input className={inputCls} value={form.exact_location} onChange={e=>set('exact_location',e.target.value)}
+                placeholder={lang==='ar'?'المكان الدقيق':lang==='fr'?"Précisez l'endroit":'Exact spot'} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.newTicketType}</label>
+              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+                {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{txt.newTicketPriority}</label>
+              <select className={`${inputCls} ${PC[form.priorite]} border-0 font-medium`} value={form.priorite} onChange={e=>set('priorite',e.target.value)}>
+                {['High','Medium','Low'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>{txt.newTicketDesc} *</label>
+            <textarea className={`${inputCls} h-24 resize-none`} value={form.description}
+              onChange={e=>set('description',e.target.value)}
+              placeholder={lang==='ar'?'اشرح المشكلة...':lang==='fr'?'Décrivez le problème...':'Describe the problem...'} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.newTicketAvail}</label>
+              <input className={inputCls} value={form.availability} onChange={e=>set('availability',e.target.value)}
+                placeholder="08:00 → 17:00" />
+            </div>
+            <div>
+              <label className={labelCls}>{txt.status}</label>
+              <select className={inputCls} value={form.statut} onChange={e=>set('statut',e.target.value)}>
+                {['En attente','En cours','Résolu'].map(s=><option key={s} value={s}>{txt.statuses[s]}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>👷 {txt.assignWorkers}</label>
+            <WorkerPicker workers={workers} selected={selWorkers} onChange={setSelWorkers} txt={txt} />
+          </div>
+
+          {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">{error}</div>}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+              {txt.newTicketCancel}
+            </button>
+            <button onClick={handleSubmit} disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              {saving ? '…' : txt.newTicketSubmit}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── EDIT TICKET MODAL ─────────────────────────────────────────────────────────
+function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDeleted, addToast }) {
+  const [form, setForm] = useState({
+    nom:            ticket.nom            || '',
+    chambre:        ticket.chambre        || '',
+    pavillon:       ticket.pavillon       || '',
+    location:       ticket.location       || 'Room',
+    exact_location: ticket.exact_location || '',
+    problem_type:   ticket.problem_type   || 'Electricity',
+    priorite:       ticket.priorite       || 'Medium',
+    description:    ticket.description    || '',
+    availability:   ticket.availability   || '',
+    statut:         ticket.statut         || 'En attente',
+    admin_note:     ticket.admin_note     || '',
+    tools_used:     ticket.tools_used     || '',
+  })
+  const [selWorkers, setSelWorkers] = useState(()=>{ try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]} })
+  const [saving,  setSaving]  = useState(false)
+  const [deleting,setDeleting]= useState(false)
+  const [error,   setError]   = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const set = (k,v) => setForm(f=>({...f,[k]:v}))
+
+  const handleSave = async () => {
+    setError('')
+    if (!form.nom.trim() || !form.description.trim()) {
+      setError(lang==='ar'?'يرجى ملء الحقول الإلزامية':lang==='fr'?'Champs obligatoires manquants':'Required fields missing')
+      return
+    }
+    setSaving(true)
+    const updates = {
+      nom:            form.nom.trim(),
+      chambre:        form.chambre.trim(),
+      pavillon:       form.pavillon.trim(),
+      location:       form.location,
+      exact_location: form.exact_location.trim() || null,
+      problem_type:   form.problem_type,
+      priorite:       form.priorite,
+      description:    form.description.trim(),
+      availability:   form.availability.trim() || null,
+      statut:         form.statut,
+      admin_note:     form.admin_note.trim() || null,
+      tools_used:     form.tools_used.trim() || null,
+      assigned_workers: selWorkers.length ? JSON.stringify(selWorkers) : null,
+    }
+    if (form.statut === 'Résolu' && ticket.statut !== 'Résolu') updates.resolved_at = new Date().toISOString()
+    if (form.statut !== 'Résolu') updates.resolved_at = null
+
+    const { data, error: err } = await supabase.from('tickets').update(updates).eq('id', ticket.id).select().single()
+    setSaving(false)
+    if (err) { setError(txt.editTicketError + ' ' + err.message); return }
+
+    // Notify student if status changed
+    if (form.statut !== ticket.statut) {
+      await supabase.from('notifications').insert([{
+        ticket_id: ticket.id, tracking_code: ticket.tracking_code, nom: ticket.nom,
+        message_student: `Your ticket ${ticket.tracking_code} is now: ${form.statut}`,
+        type: 'status_update', read_by_admin: true,
+      }])
+    }
+    addToast({ id: Date.now(), title: txt.editTicketSuccess, body: ticket.tracking_code })
+    onSaved(data)
+    onClose()
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    await supabase.from('tickets').delete().eq('id', ticket.id)
+    setDeleting(false)
+    addToast({ id: Date.now(), title: lang==='ar'?'تم حذف الطلب':lang==='fr'?'Ticket supprimé':'Ticket deleted', body: ticket.tracking_code })
+    onDeleted(ticket.id)
+    onClose()
+  }
+
+  const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const labelCls = "block text-xs font-medium text-gray-500 mb-1"
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
+          <div>
+            <p className="font-mono text-sm font-bold text-blue-600">{ticket.tracking_code}</p>
+            <h2 className="font-semibold text-gray-800">{txt.editTicketTitle}</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Student info */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              {lang==='ar'?'معلومات الطالب':lang==='fr'?"Infos de l'étudiant":'Student Info'}
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-1">
+                <label className={labelCls}>{txt.student} *</label>
+                <input className={inputCls} value={form.nom} onChange={e=>set('nom',e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{txt.room}</label>
+                <input className={inputCls} value={form.chambre} onChange={e=>set('chambre',e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{txt.filterPavillon}</label>
+                <input className={inputCls} value={form.pavillon} onChange={e=>set('pavillon',e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Problem details */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.location}</label>
+              <select className={inputCls} value={form.location} onChange={e=>set('location',e.target.value)}>
+                {ALL_LOCATIONS.map(l=><option key={l} value={l}>{tf(l,lang,LM)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{txt.exactLocation}</label>
+              <input className={inputCls} value={form.exact_location} onChange={e=>set('exact_location',e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.type}</label>
+              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+                {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{txt.priority}</label>
+              <select className={`${inputCls} font-medium`} value={form.priorite} onChange={e=>set('priorite',e.target.value)}>
+                {['High','Medium','Low'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>{txt.description} *</label>
+            <textarea className={`${inputCls} h-24 resize-none`} value={form.description} onChange={e=>set('description',e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{txt.availability}</label>
+              <input className={inputCls} value={form.availability} onChange={e=>set('availability',e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls}>{txt.status}</label>
+              <select className={`${inputCls} ${SC[form.statut]} border-transparent font-medium`} value={form.statut} onChange={e=>set('statut',e.target.value)}>
+                {['En attente','En cours','Résolu'].map(s=><option key={s} value={s}>{txt.statuses[s]}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>{txt.adminNote}</label>
+            <textarea className={`${inputCls} h-20 resize-none`} value={form.admin_note}
+              onChange={e=>set('admin_note',e.target.value)} placeholder={txt.adminNotePlaceholder} />
+          </div>
+
+          <div>
+            <label className={labelCls}>🔧 {txt.toolsUsed}</label>
+            <input className={inputCls} value={form.tools_used} onChange={e=>set('tools_used',e.target.value)}
+              placeholder={txt.toolsUsedPlaceholder} />
+          </div>
+
+          <div>
+            <label className={labelCls}>👷 {txt.assignWorkers}</label>
+            <WorkerPicker workers={workers} selected={selWorkers} onChange={setSelWorkers} txt={txt} />
+          </div>
+
+          {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">{error}</div>}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+              {txt.editTicketCancel}
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              className="flex-2 flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              {saving ? '…' : txt.editTicketSave}
+            </button>
+          </div>
+
+          {/* Delete section */}
+          <div className="border-t pt-4">
+            {!confirmDelete
+              ? <button onClick={()=>setConfirmDelete(true)}
+                  className="w-full py-2.5 rounded-xl border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors">
+                  🗑 {txt.editTicketDelete}
+                </button>
+              : <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-sm text-red-700 mb-3">{txt.editTicketDeleteConfirm}</p>
+                  <div className="flex gap-2">
+                    <button onClick={()=>setConfirmDelete(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-white">
+                      {lang==='ar'?'إلغاء':lang==='fr'?'Annuler':'Cancel'}
+                    </button>
+                    <button onClick={handleDelete} disabled={deleting}
+                      className="flex-1 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+                      {deleting?'…':(lang==='ar'?'تأكيد الحذف':lang==='fr'?'Confirmer':'Confirm Delete')}
+                    </button>
+                  </div>
+                </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── View-only Ticket modal (with Edit button) ─────────────────────────────────
+function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,onEdit}){
   const [note,setNote]=useState(ticket.admin_note||'')
   const [tools,setTools]=useState(ticket.tools_used||'')
   const [sel,setSel]=useState(()=>{try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]}})
@@ -291,6 +719,11 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${SC[ticket.statut]}`}>{txt.statuses[ticket.statut]}</span>
+            {/* Edit button */}
+            <button onClick={onEdit}
+              className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-600 text-xs font-medium border border-gray-200 transition-colors">
+              ✏️ {lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}
+            </button>
             <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl ml-1">✕</button>
           </div>
         </div>
@@ -350,7 +783,7 @@ function SettingsPanel({settings,onSave,txt,onClose}){
     if(newWorker.matricule) insertData['Matricule']=parseInt(newWorker.matricule)
     const {error}=await supabase.from('workers').insert([insertData])
     setAddingWorker(false)
-    if(error){console.error('Worker insert error:',error);setWorkerMsg('❌ '+error.message);return}
+    if(error){setWorkerMsg('❌ '+error.message);return}
     setWorkerMsg('✅ '+txt.addWorkerSaved)
     setNewWorker({nom:'',prenom:'',matricule:'',grade:'',jobTitle:''})
     setTimeout(()=>setWorkerMsg(''),3000)
@@ -364,7 +797,6 @@ function SettingsPanel({settings,onSave,txt,onClose}){
           <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl">✕</button>
         </div>
         <div className="px-6 py-5 space-y-7">
-          {/* Escalation */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-1">🔺 {txt.escalationTitle}</h3>
             <p className="text-xs text-gray-400 mb-4">Unresolved tickets automatically get higher priority over time.</p>
@@ -381,15 +813,7 @@ function SettingsPanel({settings,onSave,txt,onClose}){
                 </div>
               </div>
             ))}
-            <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-              <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Low</span>
-              <span>→ {d.escalateLowToMedium}h →</span>
-              <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">Medium</span>
-              <span>→ {d.escalateMediumToHigh}h →</span>
-              <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">High</span>
-            </div>
           </div>
-          {/* Per page */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 {txt.ticketsPerPageLabel}</h3>
             <div className="flex gap-2">
@@ -399,7 +823,6 @@ function SettingsPanel({settings,onSave,txt,onClose}){
               ))}
             </div>
           </div>
-          {/* Columns */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">👁 {txt.tableColsTitle}</h3>
             <div className="grid grid-cols-2 gap-1">
@@ -416,7 +839,6 @@ function SettingsPanel({settings,onSave,txt,onClose}){
             className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${saved?'bg-green-600 text-white':'bg-blue-600 text-white hover:bg-blue-700'}`}>
             {saved?`✓ ${txt.saved}`:txt.save}
           </button>
-          {/* Add worker section */}
           <div className="border-t pt-5">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">👷 {txt.addWorkerTitle}</h3>
             <div className="space-y-2">
@@ -445,10 +867,10 @@ function SettingsPanel({settings,onSave,txt,onClose}){
                 </div>
               </div>
               <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerJobTitle}</label>
-                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.jobTitle} onChange={e=>setNewWorker(x=>({...x,jobTitle:e.target.value}))} placeholder="عامل صيانة"/>
-                </div>
+                <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerJobTitle}</label>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  value={newWorker.jobTitle} onChange={e=>setNewWorker(x=>({...x,jobTitle:e.target.value}))} placeholder="عامل صيانة"/>
+              </div>
               {workerMsg&&<p className="text-xs py-1">{workerMsg}</p>}
               <button onClick={handleAddWorker} disabled={addingWorker}
                 className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 transition-colors">
@@ -484,7 +906,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
       </div>
       {open&&(
         <div className="border-t px-4 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" dir={txt.dir}>
-          {/* Date */}
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-xs text-gray-400 mb-1">📅 {txt.filterDate}</label>
             <div className="flex gap-2">
@@ -496,7 +917,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
                   className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"/></div>
             </div>
           </div>
-          {/* Pavilion */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">🏢 {txt.filterPavillon}</label>
             <select value={filters.pavillon} onChange={e=>setFilters(f=>({...f,pavillon:e.target.value}))}
@@ -505,7 +925,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
               {pavillons.map(p=><option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          {/* Status */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">🔵 {txt.filterStatus}</label>
             <div className="flex gap-1 flex-wrap">
@@ -517,7 +936,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
               ))}
             </div>
           </div>
-          {/* Priority */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">⚡ {txt.filterPriority}</label>
             <div className="flex gap-1">
@@ -529,7 +947,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
               ))}
             </div>
           </div>
-          {/* Problem type */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">🔧 {txt.filterType}</label>
             <select value={filters.type} onChange={e=>setFilters(f=>({...f,type:e.target.value}))}
@@ -538,7 +955,6 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
               {rawTypes.map(rt=><option key={rt} value={rt}>{tf(rt,lang,PM)}</option>)}
             </select>
           </div>
-          {/* Location */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">📍 {txt.filterLocation}</label>
             <div className="flex gap-1 flex-wrap">
@@ -575,7 +991,6 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
   const tc=['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#14b8a6','#ef4444','#a3e635']
   return(
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-      {/* Sparkline */}
       <div className="bg-white rounded-xl border shadow-sm p-5 md:col-span-2">
         <div className="flex justify-between items-start mb-3">
           <div><p className="text-xs text-gray-400 uppercase tracking-wide">{txt.weeklyTrend}</p><p className="text-2xl font-semibold text-gray-800 mt-0.5">{wd.reduce((s,v)=>s+v,0)}</p><p className="text-xs text-gray-400">tickets</p></div>
@@ -587,7 +1002,6 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
         <Spark data={wd} color="#3b82f6" h={48}/>
         <div className="flex justify-between mt-1">{wl.map((l,i)=><span key={i} className="text-xs text-gray-300">{l}</span>)}</div>
       </div>
-      {/* Priority donut */}
       <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.priorityBreakdown}</p>
         <div className="flex items-center gap-4 flex-1">
@@ -595,7 +1009,6 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
           <div className="space-y-2 flex-1">{prioS.map(s=><div key={s.label} className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:s.color}}/><span className="text-xs text-gray-600 flex-1">{s.label}</span><span className="text-xs font-medium">{s.value}</span></div>)}</div>
         </div>
       </div>
-      {/* Status donut */}
       <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.status}</p>
         <div className="flex items-center gap-4 flex-1">
@@ -603,12 +1016,10 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
           <div className="space-y-2 flex-1">{statS.map(s=><div key={s.label} className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:s.color}}/><span className="text-xs text-gray-600 flex-1">{s.label}</span><span className="text-xs font-medium">{s.value}</span></div>)}</div>
         </div>
       </div>
-      {/* By type */}
       <div className="bg-white rounded-xl border shadow-sm p-5">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.repairsByType}</p>
         {byType.slice(0,7).map((d,i)=><HBar key={d.label} label={d.label} count={d.count} max={maxT} color={tc[i%tc.length]}/>)}
       </div>
-      {/* By location */}
       <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.repairsByLocation}</p>
         <div className="flex items-center gap-4 flex-1">
@@ -616,12 +1027,10 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
           <div className="space-y-2 flex-1">{byLoc.map((d,i)=><div key={d.label} className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:['#3b82f6','#f59e0b','#8b5cf6'][i]||'#9ca3af'}}/><span className="text-xs text-gray-600 flex-1 truncate">{d.label}</span><span className="text-xs font-medium">{d.count}</span></div>)}</div>
         </div>
       </div>
-      {/* Top rooms */}
       <div className="bg-white rounded-xl border shadow-sm p-5">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.topRooms}</p>
         {byRoom.map((d,i)=><HBar key={d.label} label={d.label} count={d.count} max={maxR} color={i===0?'#ef4444':i===1?'#f59e0b':'#3b82f6'}/>)}
       </div>
-      {/* Ratings */}
       <div className="bg-white rounded-xl border shadow-sm p-5">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.feedback}</p>
         {avg?(<>
@@ -649,6 +1058,8 @@ export default function Dashboard({chef,onLogout}){
   const [notifications,setNotifications]=useState([])
   const [loading,setLoading]=useState(true)
   const [selTicket,setSelTicket]=useState(null)
+  const [editTicket,setEditTicket]=useState(null)   // ← NEW: ticket being edited
+  const [showNewTicket,setShowNewTicket]=useState(false)  // ← NEW
   const [updating,setUpdating]=useState(false)
   const [showNotifs,setShowNotifs]=useState(false)
   const [showCharts,setShowCharts]=useState(false)
@@ -661,6 +1072,11 @@ export default function Dashboard({chef,onLogout}){
   const [filters,setFilters]=useState({dateFrom:'',dateTo:'',pavillon:'',status:'',priority:'',type:'',location:''})
   const [settings,setSettings]=useState(()=>{try{return{...DEFAULT_SETTINGS,...JSON.parse(localStorage.getItem('dashSettings')||'{}')}}catch{return DEFAULT_SETTINGS}})
   const notifRef=useRef(),exportRef=useRef(),timerRef=useRef({})
+
+  const addToast = useCallback((t) => {
+    setToasts(prev=>[...prev,t])
+    timerRef.current[t.id]=setTimeout(()=>setToasts(prev=>prev.filter(x=>x.id!==t.id)),5000)
+  },[])
 
   const fetchAll=useCallback(async()=>{
     setLoading(true)
@@ -679,14 +1095,15 @@ export default function Dashboard({chef,onLogout}){
     const tc=supabase.channel('db-tickets')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},p=>{
         setTickets(prev=>[p.new,...prev])
-        const id=Date.now()
-        setToasts(prev=>[...prev,{id,...p.new}])
-        timerRef.current[id]=setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),6000)
-        setNotifications(prev=>[{id,ticket_id:p.new.id,tracking_code:p.new.tracking_code,nom:p.new.nom,message_admin:`${p.new.nom} — ${p.new.problem_type}`,type:'new_ticket',read_by_admin:false,created_at:p.new.created_at},...prev])
+        addToast({id:Date.now(),title:p.new.nom,body:`${p.new.problem_type} · ${p.new.tracking_code}`})
+        setNotifications(prev=>[{id:Date.now(),ticket_id:p.new.id,tracking_code:p.new.tracking_code,nom:p.new.nom,message_admin:`${p.new.nom} — ${p.new.problem_type}`,type:'new_ticket',read_by_admin:false,created_at:p.new.created_at},...prev])
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tickets'},p=>{
         setTickets(prev=>prev.map(t=>t.id===p.new.id?p.new:t))
         setSelTicket(prev=>prev?.id===p.new.id?p.new:prev)
+      })
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'tickets'},p=>{
+        setTickets(prev=>prev.filter(t=>t.id!==p.old.id))
       })
       .subscribe()
     const nc=supabase.channel('db-notifs')
@@ -695,7 +1112,7 @@ export default function Dashboard({chef,onLogout}){
       })
       .subscribe()
     return()=>{supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timerRef.current).forEach(clearTimeout)}
-  },[fetchAll])
+  },[fetchAll,addToast])
 
   useEffect(()=>{
     const h=e=>{
@@ -723,115 +1140,55 @@ export default function Dashboard({chef,onLogout}){
     setNotifications(prev=>prev.map(n=>({...n,read_by_admin:true})))
   }
   const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{}}
+
+  // ── NEW: handlers for new/edit/delete ──────────────────────────────────────
+  const handleTicketCreated = (newTicket) => {
+    setTickets(prev => [newTicket, ...prev])
+  }
+  const handleTicketSaved = (updated) => {
+    setTickets(prev => prev.map(t => t.id === updated.id ? updated : t))
+    setSelTicket(null)
+  }
+  const handleTicketDeleted = (id) => {
+    setTickets(prev => prev.filter(t => t.id !== id))
+    setSelTicket(null)
+  }
+
   const exportToExcel=(data,name)=>{
-    const colNames={
-      en:{code:'Code',student:'Student',room:'Room',pavilion:'Pavilion',location:'Location',type:'Problem Type',priority:'Priority',effPriority:'Effective Priority',status:'Status',description:'Description',adminNote:'Admin Note',workers:'Assigned Workers',tools:'Tools Used',submitted:'Submitted',resolved:'Resolved'},
-      fr:{code:'Code',student:'Étudiant',room:'Chambre',pavilion:'Pavillon',location:'Emplacement',type:'Type de problème',priority:'Priorité',effPriority:'Priorité effective',status:'Statut',description:'Description',adminNote:'Note admin',workers:'Ouvriers assignés',tools:'Outils utilisés',submitted:'Soumis le',resolved:'Résolu le'},
-      ar:{code:'الكود',student:'الطالب',room:'الغرفة',pavilion:'الجناح',location:'الموقع',type:'نوع المشكلة',priority:'الأولوية',effPriority:'الأولوية الفعلية',status:'الحالة',description:'الوصف',adminNote:'ملاحظة الإدارة',workers:'العمال المعينون',tools:'الأدوات المستخدمة',submitted:'تاريخ التقديم',resolved:'تاريخ الحل'},
-    }
-    const c=colNames[lang]||colNames.fr
     const ws=XLSX.utils.json_to_sheet(data.map(t=>({
-      [c.code]:t.tracking_code,
-      [c.student]:t.nom,
-      [c.room]:t.chambre,
-      [c.pavilion]:t.pavillon,
-      [c.location]:tf(t.location,lang,LM),
-      [c.type]:tf(t.problem_type,lang,PM),
-      [c.priority]:txt.priorities[t.priorite]||t.priorite,
-      [c.effPriority]:txt.priorities[getEffectivePriority(t,settings)]||getEffectivePriority(t,settings),
-      [c.status]:txt.statuses[t.statut]||t.statut,
-      [c.description]:t.description,
-      [c.adminNote]:t.admin_note||'',
-      [c.workers]:t.assigned_workers||'',
-      [c.tools]:t.tools_used||'',
-      [c.submitted]:new Date(t.created_at).toLocaleString(),
-      [c.resolved]:t.resolved_at?new Date(t.resolved_at).toLocaleString():'',
+      Code:t.tracking_code,Étudiant:t.nom,Chambre:t.chambre,Pavillon:t.pavillon,
+      Emplacement:tf(t.location,lang,LM),Type:tf(t.problem_type,lang,PM),
+      Priorité:txt.priorities[t.priorite]||t.priorite,
+      Statut:txt.statuses[t.statut]||t.statut,
+      Description:t.description,'Note admin':t.admin_note||'',
+      'Soumis le':new Date(t.created_at).toLocaleString(),
+      'Résolu le':t.resolved_at?new Date(t.resolved_at).toLocaleString():'',
     })))
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,`${name}.xlsx`);setShowExport(false)
   }
 
   const handlePrint=(data)=>{
     const dir=txt.dir||'ltr'
-    const statusBg={'En attente':'#f3f4f6','En cours':'#dbeafe','Résolu':'#dcfce7'}
-    const prioBg={High:'#fee2e2',Medium:'#fef9c3',Low:'#dcfce7'}
     const rows=data.map(t=>{
       const ep=getEffectivePriority(t,settings)
-      let workers=''
-      try{const ids=JSON.parse(t.assigned_workers||'[]');workers=ids.length?`(${ids.length})`:'' }catch{}
       return`<tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:#1d4ed8;white-space:nowrap">${t.tracking_code||''}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:#1d4ed8">${t.tracking_code||''}</td>
         <td style="padding:8px 10px"><strong>${t.nom||''}</strong><br/><span style="color:#9ca3af;font-size:9px">${t.chambre||''} · ${t.pavillon||''}</span></td>
-        <td style="padding:8px 10px;font-size:10px">${tf(t.location,lang,LM)}<br/><span style="color:#9ca3af;font-size:9px">${t.exact_location||''}</span></td>
+        <td style="padding:8px 10px;font-size:10px">${tf(t.location,lang,LM)}</td>
         <td style="padding:8px 10px;font-size:10px">${tf(t.problem_type,lang,PM)}</td>
-        <td style="padding:8px 10px"><span style="background:${prioBg[ep]||'#f3f4f6'};padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600">${txt.priorities[ep]||ep}</span></td>
-        <td style="padding:8px 10px"><span style="background:${statusBg[t.statut]||'#f3f4f6'};padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600">${txt.statuses[t.statut]||t.statut}</span></td>
-        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${new Date(t.created_at).toLocaleDateString()}</td>
-        <td style="padding:8px 10px;font-size:9px;color:#16a34a">${t.resolved_at?new Date(t.resolved_at).toLocaleDateString():''}</td>
-        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${t.tools_used||''}</td>
+        <td style="padding:8px 10px;font-size:9px">${txt.priorities[ep]||ep}</td>
+        <td style="padding:8px 10px;font-size:9px">${txt.statuses[t.statut]||t.statut}</td>
+        <td style="padding:8px 10px;font-size:9px">${new Date(t.created_at).toLocaleDateString()}</td>
         <td style="padding:8px 10px;font-size:9px">${t.admin_note||''}</td>
-        <td style="padding:8px 10px;font-size:9px;color:#6b7280">${workers}</td>
       </tr>`
     }).join('')
-    const pending=data.filter(t=>t.statut==='En attente').length
-    const inprog=data.filter(t=>t.statut==='En cours').length
-    const done=data.filter(t=>t.statut==='Résolu').length
-    const html=`<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8"/>
-    <title>${txt.title} — ${new Date().toLocaleDateString()}</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:11px;color:#111827;direction:${dir};background:#fff}
-      .page{max-width:1100px;margin:0 auto;padding:24px}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1d4ed8}
-      .header-left h1{font-size:18px;font-weight:700;color:#1d4ed8}
-      .header-left p{font-size:11px;color:#6b7280;margin-top:4px}
-      .header-right{text-align:${dir==='rtl'?'left':'right'};font-size:10px;color:#6b7280;line-height:1.8}
-      .stats{display:flex;gap:12px;margin-bottom:20px}
-      .stat{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center}
-      .stat .num{font-size:22px;font-weight:700;color:#111827}
-      .stat .lbl{font-size:9px;color:#6b7280;margin-top:2px;text-transform:uppercase}
-      table{width:100%;border-collapse:collapse;font-size:10px}
-      thead tr{background:#1d4ed8}
-      thead th{color:white;padding:8px 10px;text-align:${dir==='rtl'?'right':'left'};font-size:10px;font-weight:600;white-space:nowrap}
-      tbody tr:nth-child(even){background:#f9fafb}
-      .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between}
-      @media print{@page{size:A4 landscape;margin:12mm}.page{padding:0}button{display:none}}
-    </style></head><body>
-    <div class="page">
-      <div class="header">
-        <div class="header-left">
-          <h1>🔧 ${txt.title}</h1>
-          <p>${chef['Nom']} ${chef['Prénom']} · ${txt.serviceManager}</p>
-        </div>
-        <div class="header-right">
-          <div>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
-          <div>${data.length} tickets</div>
-        </div>
-      </div>
-      <div class="stats">
-        <div class="stat"><div class="num">${data.length}</div><div class="lbl">Total</div></div>
-        <div class="stat"><div class="num" style="color:#6b7280">${pending}</div><div class="lbl">${txt.statuses['En attente']}</div></div>
-        <div class="stat"><div class="num" style="color:#3b82f6">${inprog}</div><div class="lbl">${txt.statuses['En cours']}</div></div>
-        <div class="stat"><div class="num" style="color:#16a34a">${done}</div><div class="lbl">${txt.statuses['Résolu']}</div></div>
-      </div>
-      <table>
-        <thead><tr>
-          <th>Code</th><th>${txt.student}</th><th>${txt.location}</th><th>${txt.type}</th>
-          <th>${txt.priority}</th><th>${txt.status}</th><th>${txt.submittedOn}</th><th>${txt.resolvedOn}</th>
-          <th>${txt.toolsUsed}</th><th>${txt.adminNote}</th><th>👷</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="footer">
-        <span>${txt.title} · ${new Date().toLocaleString()}</span>
-        <span>${chef['Nom']} ${chef['Prénom']}</span>
-      </div>
-    </div>
-    <script>window.onload=()=>window.print()<\/script>
-    </body></html>`
-    const w=window.open('','_blank')
-    w.document.write(html)
-    w.document.close()
-    setShowExport(false)
+    const html=`<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8"/><title>Tickets</title>
+    <style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#111827}table{width:100%;border-collapse:collapse}thead tr{background:#1d4ed8}thead th{color:white;padding:8px 10px;text-align:left;font-size:10px}tbody tr:nth-child(even){background:#f9fafb}@media print{@page{size:A4 landscape;margin:12mm}}</style>
+    </head><body><h2 style="margin-bottom:12px">🔧 ${txt.title} — ${new Date().toLocaleDateString()}</h2>
+    <table><thead><tr><th>Code</th><th>${txt.student}</th><th>${txt.location}</th><th>${txt.type}</th><th>${txt.priority}</th><th>${txt.status}</th><th>${txt.date}</th><th>${txt.adminNote}</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <script>window.onload=()=>window.print()<\/script></body></html>`
+    const w=window.open('','_blank');w.document.write(html);w.document.close();setShowExport(false)
   }
 
   const processed=useMemo(()=>tickets.map(t=>({...t,ep:getEffectivePriority(t,settings),escalated:getEffectivePriority(t,settings)!==t.priorite})),[tickets,settings])
@@ -871,7 +1228,33 @@ export default function Dashboard({chef,onLogout}){
   return(
     <div dir={txt.dir} className="min-h-screen bg-gray-50">
       <Toast toasts={toasts} onDismiss={id=>{clearTimeout(timerRef.current[id]);setToasts(prev=>prev.filter(t=>t.id!==id))}}/>
-      {selTicket&&<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating}/>}
+
+      {/* New Ticket Modal */}
+      {showNewTicket&&(
+        <NewTicketModal txt={txt} lang={lang} workers={workers}
+          onClose={()=>setShowNewTicket(false)}
+          onCreated={handleTicketCreated}
+          addToast={addToast}/>
+      )}
+
+      {/* Edit Ticket Modal */}
+      {editTicket&&(
+        <EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers}
+          onClose={()=>setEditTicket(null)}
+          onSaved={handleTicketSaved}
+          onDeleted={handleTicketDeleted}
+          addToast={addToast}/>
+      )}
+
+      {/* View Ticket Modal (with Edit button) */}
+      {selTicket&&!editTicket&&(
+        <TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang}
+          feedbacks={feedbacks} workers={workers}
+          onClose={()=>setSelTicket(null)}
+          onStatus={updateStatus} onSave={saveNote} updating={updating}
+          onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>
+      )}
+
       {showSettings&&<SettingsPanel settings={settings} onSave={saveSettings} txt={txt} onClose={()=>setShowSettings(false)}/>}
 
       {/* Navbar */}
@@ -882,8 +1265,16 @@ export default function Dashboard({chef,onLogout}){
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <div className="flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{l.label}</button>)}</div>
+
+          {/* ✚ NEW TICKET BUTTON */}
+          <button onClick={()=>setShowNewTicket(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+            <span className="text-base leading-none">+</span> {txt.newTicket}
+          </button>
+
           <button onClick={()=>setShowCharts(!showCharts)} className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${showCharts?'bg-purple-600 text-white border-purple-600':'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>📊 {txt.charts}</button>
           <button onClick={()=>setShowSettings(true)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 text-gray-600 hover:bg-gray-50">⚙️ {txt.settings}</button>
+
           {/* Notifs */}
           <div className="relative" ref={notifRef}>
             <button onClick={()=>setShowNotifs(!showNotifs)} className="relative p-2 rounded-lg border border-gray-200 hover:bg-gray-50">
@@ -904,6 +1295,7 @@ export default function Dashboard({chef,onLogout}){
               </div>
             </div>}
           </div>
+
           {/* Export */}
           <div className="relative" ref={exportRef}>
             <button onClick={()=>setShowExport(!showExport)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 text-gray-600 hover:bg-gray-50">📥 {txt.exportBtn}</button>
@@ -914,6 +1306,7 @@ export default function Dashboard({chef,onLogout}){
               <button onClick={()=>handlePrint(tickets)} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50">🖨️ {txt.printAll||'Print all'}</button>
             </div>}
           </div>
+
           <button onClick={onLogout} className="text-xs text-red-400 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50">{txt.logout}</button>
         </div>
       </div>
@@ -961,20 +1354,29 @@ export default function Dashboard({chef,onLogout}){
                     {cols.priority &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.priority}</th>}
                     {cols.status   &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.status}</th>}
                     {cols.date     &&<th className="text-left p-3 text-xs text-gray-500 font-medium whitespace-nowrap">{txt.date}</th>}
+                    {/* Edit column */}
+                    <th className="text-left p-3 text-xs text-gray-500 font-medium w-16"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginated.map(t=>(
-                    <tr key={t.id} onClick={()=>setSelTicket(t)}
-                      className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${PB[t.ep]}`}>
-                      {cols.code    &&<td className="p-3 font-mono text-xs text-blue-500 whitespace-nowrap">{t.tracking_code}{t.escalated&&<span className="ml-1 text-orange-500" title={txt.escalated}>↑</span>}</td>}
-                      {cols.student &&<td className="p-3 font-medium text-gray-700">{t.nom}</td>}
-                      {cols.room    &&<td className="p-3 text-gray-500">{t.chambre}</td>}
-                      {cols.pavilion&&<td className="p-3 text-gray-500">{t.pavillon}</td>}
-                      {cols.type    &&<td className="p-3 text-gray-600">{tf(t.problem_type,lang,PM)}</td>}
-                      {cols.priority&&<td className="p-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span></td>}
-                      {cols.status  &&<td className="p-3"><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
-                      {cols.date    &&<td className="p-3 text-gray-400 text-xs whitespace-nowrap">{new Date(t.created_at).toLocaleDateString()}</td>}
+                    <tr key={t.id} className={`border-b hover:bg-blue-50 transition-colors ${PB[t.ep]}`}>
+                      {cols.code    &&<td className="p-3 font-mono text-xs text-blue-500 whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{t.tracking_code}{t.escalated&&<span className="ml-1 text-orange-500" title={txt.escalated}>↑</span>}</td>}
+                      {cols.student &&<td className="p-3 font-medium text-gray-700 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.nom}</td>}
+                      {cols.room    &&<td className="p-3 text-gray-500 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
+                      {cols.pavilion&&<td className="p-3 text-gray-500 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
+                      {cols.type    &&<td className="p-3 text-gray-600 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
+                      {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span></td>}
+                      {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
+                      {cols.date    &&<td className="p-3 text-gray-400 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
+                      {/* Inline edit button */}
+                      <td className="p-3">
+                        <button onClick={()=>setEditTicket(t)}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          title={lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}>
+                          ✏️
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
