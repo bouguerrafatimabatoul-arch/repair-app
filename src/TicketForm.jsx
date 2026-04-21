@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import translations from './translations'
 import { assignPriority, generateTrackingCode, nightShiftLabel } from './utils'
+import { PM, LM, SM, PrioM, tf, toEnKey, toEnLoc } from './constants'
 
 const languages = [
   { code: 'en', label: 'EN' },
@@ -38,68 +39,6 @@ const statusBorder = {
 
 const NEEDS_AVAILABILITY = ['room']
 
-// ── Translation maps ───────────────────────────────────────────────────────────
-const PM = {
-  'Electricity':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'Électricité':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'الكهرباء':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'Heating':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'Chauffage':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'التدفئة':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'Furniture':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'Mobilier':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'الأثاث':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'Door / Window':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'Porte / Fenêtre':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'باب / نافذة':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'Lighting':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'Éclairage':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'الإضاءة':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'Doors':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'Portes':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'الأبواب':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'Security':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'Sécurité':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'الأمن':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'Cleanliness':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'Propreté':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'النظافة':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'Plumbing':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'Plomberie':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'السباكة':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'Water Leakage':{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  "Fuite d'eau":{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  'تسرب المياه':{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  'Other':{en:'Other',fr:'Autre',ar:'أخرى'},
-  'Autre':{en:'Other',fr:'Autre',ar:'أخرى'},
-  'أخرى':{en:'Other',fr:'Autre',ar:'أخرى'},
-}
-const LM = {
-  'Room':{en:'Room',fr:'Chambre',ar:'الغرفة'},
-  'Chambre':{en:'Room',fr:'Chambre',ar:'الغرفة'},
-  'الغرفة':{en:'Room',fr:'Chambre',ar:'الغرفة'},
-  'Pavilion':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},
-  'Pavillon':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},
-  'الجناح':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},
-  'Toilets':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},
-  'Toilettes':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},
-  'الحمامات':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},
-}
-const SM = {
-  'En attente':{en:'Pending',fr:'En attente',ar:'قيد الانتظار'},
-  'En cours':{en:'In Progress',fr:'En cours',ar:'جارٍ المعالجة'},
-  'Résolu':{en:'Completed',fr:'Résolu',ar:'تم الحل'},
-}
-const PrioM = {
-  High:{en:'High',fr:'Haute',ar:'عالية'},
-  Medium:{en:'Medium',fr:'Moyenne',ar:'متوسطة'},
-  Low:{en:'Low',fr:'Faible',ar:'منخفضة'},
-}
-const tf = (v, lang, map) => map?.[v]?.[lang] ?? v
-
-// ── Duplicate-check: normalise a problem_type to its English key ───────────────
-const toEnKey = (v) => PM[v]?.en ?? v
-const toEnLoc = (v) => LM[v]?.en ?? v
 
 const glassCard = {
   background: 'rgba(255,255,255,0.03)',
@@ -248,6 +187,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const [availabilityEnd,   setAvailabilityEnd]     = useState('')
   const [imageFile,         setImageFile]           = useState(null)
   const [imagePreview,      setImagePreview]        = useState(null)
+  const imagePreviewRef = useRef(null)
   const [message,           setMessage]             = useState('')
   const [submitting,        setSubmitting]          = useState(false)
   const [trackingCode,      setTrackingCode]        = useState('')
@@ -345,6 +285,11 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     }
   }, [student, fetchNotifications])
 
+  // Revoke object URL on unmount to prevent memory leak
+  useEffect(() => {
+    return () => { if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current) }
+  }, [])
+
   // Close notif dropdown on outside click
   useEffect(() => {
     const h = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false) }
@@ -384,8 +329,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     const file = e.target.files[0]
     if (!file) return
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(file.type)) { alert('Please use JPG, PNG or WEBP images only.'); return }
-    setImageFile(file); setImagePreview(URL.createObjectURL(file))
+    if (!allowed.includes(file.type)) {
+      setMessage(lang === 'ar' ? 'يرجى استخدام صور JPG أو PNG أو WEBP فقط.' : lang === 'fr' ? 'Veuillez utiliser uniquement des images JPG, PNG ou WEBP.' : 'Please use JPG, PNG or WEBP images only.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage(lang === 'ar' ? 'حجم الصورة يجب أن يكون أقل من 5 ميغابايت.' : lang === 'fr' ? "La photo doit faire moins de 5 Mo." : 'Image must be under 5 MB.')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current)
+    imagePreviewRef.current = url
+    setImageFile(file)
+    setImagePreview(url)
   }
 
   const uploadImage = async (file, code) => {
@@ -486,7 +442,9 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     setLocation(''); setProblemType(''); setPriority('')
     setDescription(''); setAvailability(''); setExactLocation('')
     setAvailabilityStart(''); setAvailabilityEnd('')
-    setImageFile(null); setImagePreview(null)
+    setImageFile(null)
+    if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null }
+    setImagePreview(null)
   }
 
   const handleTrack = async () => {
@@ -818,6 +776,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                   style={glassInput}
                   placeholder={t.exactLocationPlaceholder?.[location] || ''}
                   value={exactLocation}
+                  maxLength={200}
                   onChange={e => setExactLocation(e.target.value)}
                 />
               )}
@@ -858,12 +817,16 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>{t.description} *</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-semibold uppercase tracking-widest" style={{color:'rgba(255,255,255,0.4)'}}>{t.description} *</label>
+              <span className="text-xs" style={{color: description.length > 900 ? '#f87171' : 'rgba(255,255,255,0.2)'}}>{description.length}/1000</span>
+            </div>
             <textarea
               className="w-full rounded-xl p-3 text-sm h-28 resize-none focus:outline-none transition-all"
               style={glassInput}
               placeholder={t.descriptionPlaceholder}
               value={description}
+              maxLength={1000}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
@@ -916,12 +879,24 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif"
               ref={fileRef} className="hidden" onChange={handleImageChange} />
             <button onClick={() => fileRef.current.click()}
-              className="w-full border-2 border-dashed rounded-xl p-4 text-sm transition-all"
+              className="w-full border-2 border-dashed rounded-xl p-4 text-sm transition-all hover:border-blue-500/30"
               style={{borderColor:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.02)'}}>
               {imageFile ? `✅ ${t.imageSelected}: ${imageFile.name}` : `📷 ${t.imageBtn}`}
             </button>
+            <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.2)'}}>
+              {lang === 'ar' ? 'JPG، PNG، WEBP — بحد أقصى 5 ميغابايت' : lang === 'fr' ? 'JPG, PNG, WEBP — max 5 Mo' : 'JPG, PNG, WEBP — max 5 MB'}
+            </p>
             {imagePreview && (
-              <img src={imagePreview} alt="preview" className="mt-2 w-full rounded-xl max-h-40 object-cover" />
+              <div className="mt-2 relative">
+                <img src={imagePreview} alt="preview" className="w-full rounded-xl max-h-40 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null } setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = '' }}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                  style={{background:'rgba(0,0,0,0.6)',color:'#fff'}}>
+                  ✕
+                </button>
+              </div>
             )}
           </div>
 
@@ -933,9 +908,17 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           )}
 
           <button onClick={handleSubmit} disabled={submitting || !!timeError}
-            className="w-full py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50"
+            className="w-full py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             style={{background:'linear-gradient(135deg, #3b82f6, #6366f1)',color:'#fff',boxShadow:'0 8px 24px rgba(59,130,246,0.25)'}}>
-            {submitting ? '...' : t.submit}
+            {submitting && (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+            )}
+            {submitting
+              ? (lang === 'ar' ? 'جارٍ الإرسال...' : lang === 'fr' ? 'Envoi en cours...' : 'Submitting...')
+              : t.submit}
           </button>
         </div>
       </div>

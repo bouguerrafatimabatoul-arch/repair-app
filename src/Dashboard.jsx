@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from './supabaseClient'
 import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'
+import { PM, LM, ALL_PROBLEM_TYPES, ALL_LOCATIONS, tf } from './constants'
+import { generateTrackingCode, assignPriority } from './utils'
 
 // ─── Priority escalation ───────────────────────────────────────────────────────
 function getEffectivePriority(ticket, settings) {
@@ -13,56 +15,6 @@ function getEffectivePriority(ticket, settings) {
 }
 function priorityRank(p) { return p==='High'?0:p==='Medium'?1:2 }
 
-// ─── Translation maps ──────────────────────────────────────────────────────────
-const PM = {
-  'Electricity':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'Électricité':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'الكهرباء':{en:'Electricity',fr:'Électricité',ar:'الكهرباء'},
-  'Heating':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'Chauffage':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'التدفئة':{en:'Heating',fr:'Chauffage',ar:'التدفئة'},
-  'Furniture':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'Mobilier':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'الأثاث':{en:'Furniture',fr:'Mobilier',ar:'الأثاث'},
-  'Door / Window':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'Porte / Fenêtre':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'باب / نافذة':{en:'Door / Window',fr:'Porte / Fenêtre',ar:'باب / نافذة'},
-  'Lighting':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'Éclairage':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'الإضاءة':{en:'Lighting',fr:'Éclairage',ar:'الإضاءة'},
-  'Doors':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'Portes':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'الأبواب':{en:'Doors',fr:'Portes',ar:'الأبواب'},
-  'Security':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'Sécurité':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'الأمن':{en:'Security',fr:'Sécurité',ar:'الأمن'},
-  'Cleanliness':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'Propreté':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'النظافة':{en:'Cleanliness',fr:'Propreté',ar:'النظافة'},
-  'Plumbing':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'Plomberie':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'السباكة':{en:'Plumbing',fr:'Plomberie',ar:'السباكة'},
-  'Water Leakage':{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  "Fuite d'eau":{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  'تسرب المياه':{en:'Water Leakage',fr:"Fuite d'eau",ar:'تسرب المياه'},
-  'Other':{en:'Other',fr:'Autre',ar:'أخرى'},
-  'Autre':{en:'Other',fr:'Autre',ar:'أخرى'},
-  'أخرى':{en:'Other',fr:'Autre',ar:'أخرى'},
-}
-const LM = {
-  'Room':{en:'Room',fr:'Chambre',ar:'الغرفة'},'Chambre':{en:'Room',fr:'Chambre',ar:'الغرفة'},'الغرفة':{en:'Room',fr:'Chambre',ar:'الغرفة'},
-  'Pavilion':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},'Pavillon':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},'الجناح':{en:'Pavilion',fr:'Pavillon',ar:'الجناح'},
-  'Toilets':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},'Toilettes':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},'الحمامات':{en:'Toilets',fr:'Toilettes',ar:'الحمامات'},
-}
-const tf = (v,lang,map) => map[v]?.[lang] ?? v
-
-// All problem types flat list for dropdowns
-const ALL_PROBLEM_TYPES = [
-  'Electricity','Heating','Furniture','Door / Window','Other',
-  'Lighting','Doors','Security','Cleanliness',
-  'Plumbing','Water Leakage',
-]
-const ALL_LOCATIONS = ['Room','Pavilion','Toilets']
 
 // ─── Translations ──────────────────────────────────────────────────────────────
 const T = {
@@ -199,20 +151,6 @@ const SC = {'En attente':'bg-gray-100 text-gray-600','En cours':'bg-blue-100 tex
 const PC = {High:'bg-red-100 text-red-700',Medium:'bg-yellow-100 text-yellow-700',Low:'bg-green-100 text-green-700'}
 const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-yellow-400',Low:'border-l-[3px] border-green-400'}
 
-function generateTrackingCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = 'RQ-'
-  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
-  return code
-}
-
-function assignPriority(type) {
-  const high = ['Electricity','Électricité','الكهرباء','Water Leakage',"Fuite d'eau",'تسرب المياه','Security','Sécurité','الأمن','Door / Window','Porte / Fenêtre','باب / نافذة']
-  const medium = ['Heating','Chauffage','التدفئة','Plumbing','Plomberie','السباكة','Lighting','Éclairage','الإضاءة','Doors','Portes','الأبواب']
-  if (high.includes(type)) return 'High'
-  if (medium.includes(type)) return 'Medium'
-  return 'Low'
-}
 
 // ─── Mini charts ───────────────────────────────────────────────────────────────
 function Donut({slices,size=96}){
@@ -258,14 +196,17 @@ function Toast({toasts,onDismiss}){
   return(
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" style={{maxWidth:320}}>
       {toasts.map(t=>(
-        <div key={t.id} className="pointer-events-auto bg-white border border-blue-200 rounded-xl shadow-xl px-4 py-3 flex items-start gap-3"
-          style={{animation:'slideInRight .3s ease'}}>
-          <span style={{fontSize:18}}>🔔</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">{t.title||t.nom}</p>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{t.body||''}</p>
+        <div key={t.id} className="pointer-events-auto rounded-xl shadow-2xl px-4 py-3 flex items-start gap-3 border"
+          style={{background:'rgba(15,20,30,0.97)',backdropFilter:'blur(20px)',borderColor:'rgba(59,130,246,0.2)',animation:'slideInRight .3s ease',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.25)'}}>
+            <span style={{fontSize:14}}>🔔</span>
           </div>
-          <button onClick={()=>onDismiss(t.id)} className="text-gray-300 hover:text-gray-500 shrink-0">✕</button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate" style={{color:'#f0f6ff'}}>{t.title||t.nom}</p>
+            <p className="text-xs mt-0.5 truncate" style={{color:'rgba(255,255,255,0.4)'}}>{t.body||''}</p>
+          </div>
+          <button onClick={()=>onDismiss(t.id)} className="shrink-0 transition-colors" style={{color:'rgba(255,255,255,0.3)'}}
+            onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.3)'}>✕</button>
         </div>
       ))}
     </div>
@@ -893,10 +834,10 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
   const clear=()=>setFilters({dateFrom:'',dateTo:'',pavillon:'',status:'',priority:'',type:'',location:''})
   const chip=(field,val)=>setFilters(f=>({...f,[field]:f[field]===val?'':val}))
   return(
-    <div className="bg-white rounded-xl border shadow-sm mb-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 shadow-sm mb-4">
       <div className="flex items-center justify-between px-4 py-3 cursor-pointer select-none" onClick={()=>setOpen(!open)}>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">🔽 {txt.filtersTitle}</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">🔽 {txt.filtersTitle}</span>
           {activeCount>0&&<span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">{activeCount} {activeCount===1?txt.activeFilters:txt.activeFiltersPlural}</span>}
         </div>
         <div className="flex items-center gap-3">
@@ -905,62 +846,62 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
         </div>
       </div>
       {open&&(
-        <div className="border-t px-4 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" dir={txt.dir}>
+        <div className="border-t dark:border-slate-700 px-4 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" dir={txt.dir}>
           <div className="sm:col-span-2 lg:col-span-1">
-            <label className="block text-xs text-gray-400 mb-1">📅 {txt.filterDate}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">📅 {txt.filterDate}</label>
             <div className="flex gap-2">
-              <div className="flex-1"><p className="text-xs text-gray-400 mb-0.5">{txt.filterFrom}</p>
+              <div className="flex-1"><p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">{txt.filterFrom}</p>
                 <input type="date" value={filters.dateFrom} onChange={e=>setFilters(f=>({...f,dateFrom:e.target.value}))}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"/></div>
-              <div className="flex-1"><p className="text-xs text-gray-400 mb-0.5">{txt.filterTo}</p>
+                  className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"/></div>
+              <div className="flex-1"><p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">{txt.filterTo}</p>
                 <input type="date" value={filters.dateTo} onChange={e=>setFilters(f=>({...f,dateTo:e.target.value}))}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"/></div>
+                  className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"/></div>
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">🏢 {txt.filterPavillon}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">🏢 {txt.filterPavillon}</label>
             <select value={filters.pavillon} onChange={e=>setFilters(f=>({...f,pavillon:e.target.value}))}
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
               <option value="">{txt.filterAll}</option>
               {pavillons.map(p=><option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">🔵 {txt.filterStatus}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">🔵 {txt.filterStatus}</label>
             <div className="flex gap-1 flex-wrap">
               {['En attente','En cours','Résolu'].map(s=>(
                 <button key={s} onClick={()=>chip('status',s)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filters.status===s?SC[s]+' border-transparent font-medium':'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filters.status===s?SC[s]+' border-transparent font-medium':'border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                   {txt.statuses[s]}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">⚡ {txt.filterPriority}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">⚡ {txt.filterPriority}</label>
             <div className="flex gap-1">
               {['High','Medium','Low'].map(p=>(
                 <button key={p} onClick={()=>chip('priority',p)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filters.priority===p?PC[p]+' border-transparent font-medium':'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filters.priority===p?PC[p]+' border-transparent font-medium':'border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                   {txt.priorities[p]}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">🔧 {txt.filterType}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">🔧 {txt.filterType}</label>
             <select value={filters.type} onChange={e=>setFilters(f=>({...f,type:e.target.value}))}
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
               <option value="">{txt.filterAll}</option>
               {rawTypes.map(rt=><option key={rt} value={rt}>{tf(rt,lang,PM)}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">📍 {txt.filterLocation}</label>
+            <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">📍 {txt.filterLocation}</label>
             <div className="flex gap-1 flex-wrap">
               {locKeys.map(loc=>(
                 <button key={loc} onClick={()=>chip('location',loc)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tf(filters.location,'en',LM)===loc?'bg-purple-100 text-purple-700 border-purple-200 font-medium':'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tf(filters.location,'en',LM)===loc?'bg-purple-100 text-purple-700 border-purple-200 font-medium':'border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                   {tf(loc,lang,LM)}
                 </button>
               ))}
@@ -1049,6 +990,141 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
+// ─── Worker Drawer ─────────────────────────────────────────────────────────────
+function WorkerDrawer({worker, tickets, txt, lang, onClose}){
+  const workerTickets=useMemo(()=>{
+    const id=worker['N°']
+    return tickets
+      .filter(t=>{try{return JSON.parse(t.assigned_workers||'[]').includes(id)}catch{return false}})
+      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+  },[worker,tickets])
+
+  const total=workerTickets.length
+  const resolved=workerTickets.filter(t=>t.statut==='Résolu').length
+  const inp=workerTickets.filter(t=>t.statut==='En cours').length
+  const pend=workerTickets.filter(t=>t.statut==='En attente').length
+  const rate=total>0?Math.round(resolved/total*100):0
+
+  const byType=useMemo(()=>{
+    const counts=workerTickets.reduce((acc,t)=>{acc[t.problem_type]=(acc[t.problem_type]||0)+1;return acc},{})
+    return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5)
+  },[workerTickets])
+
+  const statCards=[
+    {l:lang==='ar'?'المجموع':'Total',               v:total,    color:'text-slate-700 dark:text-slate-200', accent:'#64748b'},
+    {l:lang==='ar'?'تم الحل':lang==='fr'?'Résolus':'Resolved', v:resolved, color:'text-emerald-600 dark:text-emerald-400', accent:'#10b981'},
+    {l:lang==='ar'?'جارٍ':lang==='fr'?'En cours':'In Prog.',  v:inp,      color:'text-blue-600 dark:text-blue-400',    accent:'#3b82f6'},
+    {l:lang==='ar'?'انتظار':lang==='fr'?'Attente':'Pending',  v:pend,     color:'text-amber-600 dark:text-amber-400',  accent:'#f59e0b'},
+  ]
+
+  return(
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose}/>
+      <div className="fixed right-0 inset-y-0 z-50 w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden"
+        style={{animation:'slideInRight .25s ease'}}>
+
+        {/* Header */}
+        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 shrink-0">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shrink-0">
+                {worker['Nom']?.[0]}{worker['Prénom']?.[0]}
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-lg leading-tight">{worker['Nom']} {worker['Prénom']}</h3>
+                <p className="text-slate-400 text-sm mt-0.5">{worker['Grade']||'—'}</p>
+                {worker['job title']&&<p className="text-slate-500 text-xs mt-0.5">{worker['job title']}</p>}
+                {worker['Matricule']&&<p className="text-slate-600 text-xs font-mono mt-1">#{worker['Matricule']}</p>}
+              </div>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 text-xl leading-none">✕</button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Stat cards */}
+          <div className="p-5 border-b border-gray-100 dark:border-slate-800">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-3">
+              {lang==='ar'?'الإحصائيات':lang==='fr'?'Statistiques':'Stats'}
+            </p>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {statCards.map(s=>(
+                <div key={s.l} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center border border-gray-100 dark:border-slate-700"
+                  style={{borderTop:`3px solid ${s.accent}`}}>
+                  <p className={`text-2xl font-bold ${s.color}`}>{s.v}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 leading-tight">{s.l}</p>
+                </div>
+              ))}
+            </div>
+            {total>0&&(
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs text-gray-500 dark:text-slate-400">
+                    {lang==='ar'?'معدل الحل':lang==='fr'?'Taux de résolution':'Resolution rate'}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{rate}%</span>
+                </div>
+                <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{width:`${rate}%`}}/>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Top problem types */}
+          {byType.length>0&&(
+            <div className="p-5 border-b border-gray-100 dark:border-slate-800">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-3">
+                {lang==='ar'?'أكثر الأنواع':lang==='fr'?'Types fréquents':'Top problem types'}
+              </p>
+              <div className="space-y-2.5">
+                {byType.map(([type,count])=>(
+                  <div key={type} className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600 dark:text-slate-300 truncate flex-1">{tf(type,lang,PM)}</span>
+                    <div className="w-20 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden shrink-0">
+                      <div className="h-full bg-blue-500 rounded-full" style={{width:`${(count/total)*100}%`}}/>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 w-4 text-right shrink-0">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Repair history */}
+          <div className="p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-3">
+              {lang==='ar'?'سجل الإصلاحات':lang==='fr'?'Historique des réparations':'Repair history'}
+              {total>0&&<span className="ml-2 text-blue-500 font-bold">{total}</span>}
+            </p>
+            {total===0
+              ?<p className="text-sm text-gray-400 dark:text-slate-500 text-center py-8">{txt.noTickets}</p>
+              :<div className="space-y-2">
+                {workerTickets.map(t=>(
+                  <div key={t.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-xs text-blue-500 shrink-0">{t.tracking_code}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${PC[t.ep||t.priorite]}`}>{txt.priorities[t.ep||t.priorite]}</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-slate-200 truncate">{t.nom}</p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{t.chambre} · {t.pavillon} · {tf(t.problem_type,lang,PM)}</p>
+                      <span className="text-xs text-gray-300 dark:text-slate-600 whitespace-nowrap ml-2 shrink-0">{new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {t.resolved_at&&<p className="text-xs text-emerald-500 mt-0.5">✓ {new Date(t.resolved_at).toLocaleDateString()}</p>}
+                  </div>
+                ))}
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function Dashboard({chef,onLogout}){
   const [lang,setLang]=useState('fr')
   const txt=T[lang]
@@ -1065,6 +1141,15 @@ export default function Dashboard({chef,onLogout}){
   const [showCharts,setShowCharts]=useState(false)
   const [showExport,setShowExport]=useState(false)
   const [showSettings,setShowSettings]=useState(false)
+  const [activeView,setActiveView]=useState('tickets')
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
+  const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem('dm')==='1'}catch{return false}})
+  const [selectedWorker,setSelectedWorker]=useState(null)
+
+  useEffect(()=>{
+    document.documentElement.classList.toggle('dark',darkMode)
+    try{localStorage.setItem('dm',darkMode?'1':'0')}catch{}
+  },[darkMode])
   const [toasts,setToasts]=useState([])
   const [search,setSearch]=useState('')
   const [page,setPage]=useState(1)
@@ -1225,181 +1310,300 @@ export default function Dashboard({chef,onLogout}){
   const cols=settings.visibleCols
   const unread=notifications.filter(n=>!n.read_by_admin).length
 
+  const sidebarW = sidebarCollapsed ? '4rem' : '14rem'
+
   return(
-    <div dir={txt.dir} className="min-h-screen bg-gray-50">
-      <Toast toasts={toasts} onDismiss={id=>{clearTimeout(timerRef.current[id]);setToasts(prev=>prev.filter(t=>t.id!==id))}}/>
+  <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex overflow-hidden">
+    <Toast toasts={toasts} onDismiss={id=>{clearTimeout(timerRef.current[id]);setToasts(prev=>prev.filter(t=>t.id!==id))}}/>
 
-      {/* New Ticket Modal */}
-      {showNewTicket&&(
-        <NewTicketModal txt={txt} lang={lang} workers={workers}
-          onClose={()=>setShowNewTicket(false)}
-          onCreated={handleTicketCreated}
-          addToast={addToast}/>
-      )}
+    {/* Modals */}
+    {showNewTicket&&(<NewTicketModal txt={txt} lang={lang} workers={workers} onClose={()=>setShowNewTicket(false)} onCreated={handleTicketCreated} addToast={addToast}/>)}
+    {editTicket&&(<EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers} onClose={()=>setEditTicket(null)} onSaved={handleTicketSaved} onDeleted={handleTicketDeleted} addToast={addToast}/>)}
+    {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>)}
+    {showSettings&&<SettingsPanel settings={settings} onSave={saveSettings} txt={txt} onClose={()=>setShowSettings(false)}/>}
+    {selectedWorker&&<WorkerDrawer worker={selectedWorker} tickets={tickets} txt={txt} lang={lang} onClose={()=>setSelectedWorker(null)}/>}
 
-      {/* Edit Ticket Modal */}
-      {editTicket&&(
-        <EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers}
-          onClose={()=>setEditTicket(null)}
-          onSaved={handleTicketSaved}
-          onDeleted={handleTicketDeleted}
-          addToast={addToast}/>
-      )}
+    {/* ── Sidebar ── */}
+    <aside className={`fixed inset-y-0 z-30 bg-slate-900 flex flex-col transition-all duration-300 ${sidebarCollapsed?'w-16':'w-56'}`}
+      style={{[txt.dir==='rtl'?'right':'left']:0, boxShadow:'4px 0 32px rgba(0,0,0,0.18)'}}>
 
-      {/* View Ticket Modal (with Edit button) */}
-      {selTicket&&!editTicket&&(
-        <TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang}
-          feedbacks={feedbacks} workers={workers}
-          onClose={()=>setSelTicket(null)}
-          onStatus={updateStatus} onSave={saveNote} updating={updating}
-          onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>
-      )}
-
-      {showSettings&&<SettingsPanel settings={settings} onSave={saveSettings} txt={txt} onClose={()=>setShowSettings(false)}/>}
-
-      {/* Navbar */}
-      <div className="bg-white border-b px-6 py-3 flex justify-between items-center sticky top-0 z-20 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0">{chef['Nom']?.[0]}{chef['Prénom']?.[0]}</div>
-          <div><p className="font-semibold text-sm text-gray-800">{chef['Nom']} {chef['Prénom']}</p><p className="text-xs text-gray-400">{txt.serviceManager}</p></div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <div className="flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{l.label}</button>)}</div>
-
-          {/* ✚ NEW TICKET BUTTON */}
-          <button onClick={()=>setShowNewTicket(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
-            <span className="text-base leading-none">+</span> {txt.newTicket}
-          </button>
-
-          <button onClick={()=>setShowCharts(!showCharts)} className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${showCharts?'bg-purple-600 text-white border-purple-600':'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>📊 {txt.charts}</button>
-          <button onClick={()=>setShowSettings(true)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 text-gray-600 hover:bg-gray-50">⚙️ {txt.settings}</button>
-
-          {/* Notifs */}
-          <div className="relative" ref={notifRef}>
-            <button onClick={()=>setShowNotifs(!showNotifs)} className="relative p-2 rounded-lg border border-gray-200 hover:bg-gray-50">
-              🔔{unread>0&&<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{unread>9?'9+':unread}</span>}
-            </button>
-            {showNotifs&&<div className="absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl z-30 overflow-hidden">
-              <div className="flex justify-between items-center px-4 py-3 border-b"><span className="font-semibold text-sm">{txt.notifications}</span><button onClick={markAllRead} className="text-xs text-blue-500 hover:underline">{txt.markRead}</button></div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
-                {notifications.length===0?<p className="text-center text-gray-400 text-sm py-6">{txt.noNotifs}</p>
-                :notifications.map(n=>(
-                  <button key={n.id} onClick={()=>{const t=tickets.find(t=>t.id===n.ticket_id);if(t){setSelTicket(t);setShowNotifs(false)}}}
-                    className={`w-full text-left px-4 py-3 text-sm hover:bg-gray-50 ${n.read_by_admin?'':'bg-blue-50'}`}>
-                    <div className="flex justify-between items-start gap-2"><p className="font-medium text-gray-700 truncate">{n.nom}</p>{!n.read_by_admin&&<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5"/>}</div>
-                    <p className="text-gray-500 text-xs mt-0.5 truncate">{n.message_admin||txt.newTicket}</p>
-                    <p className="text-gray-300 text-xs mt-0.5">{n.tracking_code} · {new Date(n.created_at).toLocaleString()}</p>
-                  </button>
-                ))}
-              </div>
-            </div>}
-          </div>
-
-          {/* Export */}
-          <div className="relative" ref={exportRef}>
-            <button onClick={()=>setShowExport(!showExport)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 text-gray-600 hover:bg-gray-50">📥 {txt.exportBtn}</button>
-            {showExport&&<div className="absolute right-0 top-10 bg-white border rounded-xl shadow-lg z-30 w-48 overflow-hidden">
-              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 border-b">📥 {txt.exportAll}</button>
-              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 border-b">📥 {txt.exportFiltered}</button>
-              <button onClick={()=>handlePrint(filtered)} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 border-b">🖨️ {txt.printFiltered||'Print filtered'}</button>
-              <button onClick={()=>handlePrint(tickets)} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50">🖨️ {txt.printAll||'Print all'}</button>
-            </div>}
-          </div>
-
-          <button onClick={onLogout} className="text-xs text-red-400 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50">{txt.logout}</button>
-        </div>
+      <div className={`flex items-center gap-3 px-4 py-4 border-b border-slate-800 ${sidebarCollapsed?'justify-center':''}`}>
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-sm shrink-0 shadow-md">🔧</div>
+        {!sidebarCollapsed&&<span className="text-white font-bold text-sm tracking-wide">Repair Pro</span>}
       </div>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Stat cards */}
+      {!sidebarCollapsed&&(
+        <div className="px-4 py-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
+              {chef['Nom']?.[0]}{chef['Prénom']?.[0]}
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-xs font-semibold truncate">{chef['Nom']} {chef['Prénom']}</p>
+              <p className="text-slate-400 text-xs truncate">{txt.serviceManager}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto mt-1">
+        {[
+          {id:'tickets',       icon:'🎫', label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
+          {id:'analytics',     icon:'📊', label:txt.charts},
+          {id:'workers',       icon:'👷', label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
+          {id:'notifications', icon:'🔔', label:txt.notifications, badge:unread||null},
+        ].map(item=>(
+          <button key={item.id} onClick={()=>setActiveView(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
+              activeView===item.id?'bg-blue-600 text-white shadow-md':'text-slate-400 hover:text-white hover:bg-slate-800'
+            } ${sidebarCollapsed?'justify-center':''}`}>
+            <span className="text-base shrink-0">{item.icon}</span>
+            {!sidebarCollapsed&&<>
+              <span className="font-medium truncate">{item.label}</span>
+              {item.badge>0&&<span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shrink-0">{item.badge>9?'9+':item.badge}</span>}
+            </>}
+          </button>
+        ))}
+        <button onClick={()=>setShowSettings(true)}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${sidebarCollapsed?'justify-center':''}`}>
+          <span className="text-base shrink-0">⚙️</span>
+          {!sidebarCollapsed&&<span className="font-medium">{txt.settings}</span>}
+        </button>
+      </nav>
+
+      <div className="p-2 border-t border-slate-800 space-y-1">
+        <button onClick={()=>setSidebarCollapsed(!sidebarCollapsed)}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 text-sm transition-all ${sidebarCollapsed?'justify-center':''}`}>
+          <span className="text-sm">{sidebarCollapsed?(txt.dir==='rtl'?'←':'→'):(txt.dir==='rtl'?'→':'←')}</span>
+          {!sidebarCollapsed&&<span className="text-xs">{lang==='ar'?'طي':lang==='fr'?'Réduire':'Collapse'}</span>}
+        </button>
+        <button onClick={onLogout}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm transition-all ${sidebarCollapsed?'justify-center':''}`}>
+          <span className="text-base">🚪</span>
+          {!sidebarCollapsed&&<span className="font-medium">{txt.logout}</span>}
+        </button>
+      </div>
+    </aside>
+
+    {/* ── Main ── */}
+    <div className="flex-1 flex flex-col min-h-screen"
+      style={{[txt.dir==='rtl'?'marginRight':'marginLeft']:sidebarW, transition:'margin 0.3s'}}>
+
+      <header className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-20 px-5 py-3 flex items-center justify-between gap-3 shadow-sm" dir={txt.dir}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-1 h-6 bg-blue-600 rounded-full shrink-0"/>
+          <h1 className="font-semibold text-gray-800 dark:text-slate-200 text-sm">
+            {activeView==='tickets'?(lang==='ar'?'الطلبات':'Tickets'):activeView==='analytics'?txt.charts:activeView==='workers'?(lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'):txt.notifications}
+          </h1>
+          {activeView==='tickets'&&<span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium">{filtered.length}</span>}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button onClick={()=>setDarkMode(d=>!d)}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-sm"
+            title={darkMode?'Light mode':'Dark mode'}>
+            {darkMode?'☀️':'🌙'}
+          </button>
+          <div className="flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>{l.label}</button>)}</div>
+          <button onClick={()=>setShowNewTicket(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+            <span className="text-sm font-bold leading-none">+</span> {txt.newTicket}
+          </button>
+          <div className="relative" ref={exportRef}>
+            <button onClick={()=>setShowExport(!showExport)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">📥 {txt.exportBtn}</button>
+            {showExport&&(<div className="absolute right-0 top-9 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-xl shadow-lg z-30 w-48 overflow-hidden">
+              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportAll}</button>
+              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportFiltered}</button>
+              <button onClick={()=>handlePrint(filtered)} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">🖨️ {txt.printFiltered||'Print filtered'}</button>
+              <button onClick={()=>handlePrint(tickets)} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">🖨️ {txt.printAll||'Print all'}</button>
+            </div>)}
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 p-6 overflow-auto" dir={txt.dir}>
+
+      {/* ── Tickets view ── */}
+      {activeView==='tickets'&&<>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {[{l:txt.total,v:total,c:'text-gray-700',bg:'bg-white',f:{status:'',priority:''}},
-            {l:txt.pending,v:pend,c:'text-gray-600',bg:'bg-white',f:{status:'En attente',priority:''}},
-            {l:txt.inProgress,v:inp,c:'text-blue-600',bg:'bg-blue-50',f:{status:'En cours',priority:''}},
-            {l:txt.resolved,v:resN,c:'text-green-600',bg:'bg-green-50',f:{status:'Résolu',priority:''}},
-            {l:`⚡ ${txt.urgent}`,v:urg,c:'text-red-600',bg:'bg-red-50',f:{status:'',priority:'High'}},
+          {[
+            {l:txt.total,          v:total, accent:'#64748b', text:'text-slate-700', f:{status:'',priority:''}},
+            {l:txt.pending,        v:pend,  accent:'#f59e0b', text:'text-amber-600', f:{status:'En attente',priority:''}},
+            {l:txt.inProgress,     v:inp,   accent:'#3b82f6', text:'text-blue-600',  f:{status:'En cours',priority:''}},
+            {l:txt.resolved,       v:resN,  accent:'#10b981', text:'text-emerald-600',f:{status:'Résolu',priority:''}},
+            {l:`⚡ ${txt.urgent}`, v:urg,   accent:'#ef4444', text:'text-red-600',   f:{status:'',priority:'High'}},
           ].map(s=>(
             <button key={s.l} onClick={()=>setFilters(f=>({...f,...s.f}))}
-              className={`${s.bg} rounded-xl border p-4 text-center shadow-sm hover:shadow-md transition-all`}>
-              <p className={`text-3xl font-bold ${s.c}`}>{s.v}</p>
-              <p className="text-xs text-gray-400 mt-1">{s.l}</p>
+              className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-4 text-left shadow-sm hover:shadow-md transition-all"
+              style={{borderLeft:`4px solid ${s.accent}`}}>
+              <p className={`text-3xl font-bold ${s.text}`}>{s.v}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{s.l}</p>
+              <div className="mt-2.5 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{width:total>0?`${Math.round(s.v/total*100)}%`:'0%', background:s.accent, opacity:0.55}}/>
+              </div>
             </button>
           ))}
         </div>
 
-        {showCharts&&<Analytics tickets={tickets} feedbacks={feedbacks} txt={txt} lang={lang} settings={settings}/>}
-
         <FilterBar tickets={tickets} filters={filters} setFilters={setFilters} txt={txt} lang={lang} open={filterOpen} setOpen={setFilterOpen}/>
 
-        <div className="mb-3">
-          <input className="w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white shadow-sm"
+        <div className="my-3">
+          <input className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-500 shadow-sm"
             placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          {loading?<div className="p-8 text-center text-gray-400">{txt.loading}</div>
-          :filtered.length===0?<div className="p-8 text-center text-gray-400">{txt.noTickets}</div>
-          :<>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    {cols.code     &&<th className="text-left p-3 text-xs text-gray-500 font-medium">Code</th>}
-                    {cols.student  &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.student}</th>}
-                    {cols.room     &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.room}</th>}
-                    {cols.pavilion &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.filterPavillon}</th>}
-                    {cols.type     &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.type}</th>}
-                    {cols.priority &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.priority}</th>}
-                    {cols.status   &&<th className="text-left p-3 text-xs text-gray-500 font-medium">{txt.status}</th>}
-                    {cols.date     &&<th className="text-left p-3 text-xs text-gray-500 font-medium whitespace-nowrap">{txt.date}</th>}
-                    {/* Edit column */}
-                    <th className="text-left p-3 text-xs text-gray-500 font-medium w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map(t=>(
-                    <tr key={t.id} className={`border-b hover:bg-blue-50 transition-colors ${PB[t.ep]}`}>
-                      {cols.code    &&<td className="p-3 font-mono text-xs text-blue-500 whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{t.tracking_code}{t.escalated&&<span className="ml-1 text-orange-500" title={txt.escalated}>↑</span>}</td>}
-                      {cols.student &&<td className="p-3 font-medium text-gray-700 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.nom}</td>}
-                      {cols.room    &&<td className="p-3 text-gray-500 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
-                      {cols.pavilion&&<td className="p-3 text-gray-500 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
-                      {cols.type    &&<td className="p-3 text-gray-600 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
-                      {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span></td>}
-                      {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
-                      {cols.date    &&<td className="p-3 text-gray-400 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
-                      {/* Inline edit button */}
-                      <td className="p-3">
-                        <button onClick={()=>setEditTicket(t)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title={lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}>
-                          ✏️
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          {loading
+            ?<div className="p-12 flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+              <svg className="animate-spin h-7 w-7 text-blue-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              <span className="text-sm">{txt.loading}</span>
             </div>
-            {totalPages>1&&(
-              <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
-                <span className="text-xs text-gray-400">{filtered.length} tickets · {page}/{totalPages}</span>
-                <div className="flex gap-1">
-                  <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} className="px-3 py-1 rounded-lg border text-xs disabled:opacity-30 hover:bg-white">←</button>
-                  {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
-                    const pg=Math.min(Math.max(page-2+i,1),totalPages)
-                    return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border text-xs ${pg===page?'bg-blue-600 text-white border-blue-600':'hover:bg-white'}`}>{pg}</button>
-                  })}
-                  <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} className="px-3 py-1 rounded-lg border text-xs disabled:opacity-30 hover:bg-white">→</button>
+            :filtered.length===0
+              ?<div className="p-8 text-center text-gray-400 dark:text-slate-500">{txt.noTickets}</div>
+              :<>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-700">
+                      <tr>
+                        {cols.code     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">Code</th>}
+                        {cols.student  &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.student}</th>}
+                        {cols.room     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.room}</th>}
+                        {cols.pavilion &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.filterPavillon}</th>}
+                        {cols.type     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.type}</th>}
+                        {cols.priority &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.priority}</th>}
+                        {cols.status   &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.status}</th>}
+                        {cols.date     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">{txt.date}</th>}
+                        <th className="w-10"/>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map(t=>(
+                        <tr key={t.id} className={`border-b dark:border-slate-800 hover:bg-blue-50/40 dark:hover:bg-slate-800/60 transition-colors ${PB[t.ep]}`}>
+                          {cols.code    &&<td className="p-3 font-mono text-xs text-blue-500 whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{t.tracking_code}{t.escalated&&<span className="ml-1 text-orange-500" title={txt.escalated}>↑</span>}</td>}
+                          {cols.student &&<td className="p-3 font-medium text-gray-700 dark:text-slate-200 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.nom}</td>}
+                          {cols.room    &&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
+                          {cols.pavilion&&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
+                          {cols.type    &&<td className="p-3 text-gray-600 dark:text-slate-300 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
+                          {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span></td>}
+                          {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
+                          {cols.date    &&<td className="p-3 text-gray-400 dark:text-slate-500 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
+                          <td className="p-3">
+                            <button onClick={()=>setEditTicket(t)}
+                              className="p-1.5 rounded-lg text-gray-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                              title={lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}>✏️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            )}
-          </>}
+                {totalPages>1&&(
+                  <div className="flex items-center justify-between px-4 py-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {page}/{totalPages}</span>
+                    <div className="flex gap-1">
+                      <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">←</button>
+                      {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
+                        const pg=Math.min(Math.max(page-2+i,1),totalPages)
+                        return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border dark:border-slate-700 text-xs ${pg===page?'bg-blue-600 text-white border-blue-600':'hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400'}`}>{pg}</button>
+                      })}
+                      <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">→</button>
+                    </div>
+                  </div>
+                )}
+              </>
+          }
         </div>
-      </div>
+      </>}
 
-      <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(110%)}to{opacity:1;transform:translateX(0)}}`}</style>
+      {/* ── Analytics view ── */}
+      {activeView==='analytics'&&<Analytics tickets={tickets} feedbacks={feedbacks} txt={txt} lang={lang} settings={settings}/>}
+
+      {/* ── Workers view ── */}
+      {activeView==='workers'&&(
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b dark:border-slate-700 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-gray-800 dark:text-slate-200">{lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'}</h3>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{workers.length} {lang==='ar'?'عامل':lang==='fr'?'ouvriers':'workers'}</p>
+            </div>
+            <button onClick={()=>setShowSettings(true)}
+              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
+              + {txt.addWorkerBtn}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b">
+                <tr>
+                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerName}</th>
+                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerFirst}</th>
+                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerMatricule}</th>
+                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerGrade}</th>
+                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerJobTitle}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workers.map((w,i)=>(
+                  <tr key={w['N°']||i} onClick={()=>setSelectedWorker(w)}
+                    className="border-b dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
+                    <td className="p-3 font-medium text-gray-700 dark:text-slate-200">{w['Nom']}</td>
+                    <td className="p-3 text-gray-600 dark:text-slate-300">{w['Prénom']||'—'}</td>
+                    <td className="p-3 font-mono text-xs text-gray-500 dark:text-slate-400">{w['Matricule']||'—'}</td>
+                    <td className="p-3 text-gray-500 dark:text-slate-400">{w['Grade']||'—'}</td>
+                    <td className="p-3 text-gray-500 dark:text-slate-400 text-xs">{w['job title']||'—'}</td>
+                  </tr>
+                ))}
+                {workers.length===0&&<tr><td colSpan={5} className="p-8 text-center text-gray-400 dark:text-slate-500">{txt.noWorkers}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notifications view ── */}
+      {activeView==='notifications'&&(
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden max-w-2xl">
+          <div className="px-5 py-4 border-b dark:border-slate-700 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-gray-800 dark:text-slate-200">{txt.notifications}</h3>
+              {unread>0&&<p className="text-xs text-blue-500 mt-0.5">{unread} {lang==='ar'?'غير مقروء':lang==='fr'?'non lus':'unread'}</p>}
+            </div>
+            <button onClick={markAllRead}
+              className="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+              {txt.markRead}
+            </button>
+          </div>
+          <div className="divide-y dark:divide-slate-800 max-h-[calc(100vh-220px)] overflow-y-auto">
+            {notifications.length===0
+              ?<p className="text-center text-gray-400 dark:text-slate-500 text-sm py-8">{txt.noNotifs}</p>
+              :notifications.map(n=>(
+                <button key={n.id}
+                  onClick={()=>{const t=tickets.find(t=>t.id===n.ticket_id);if(t){setSelTicket(t);setActiveView('tickets')}}}
+                  className={`w-full text-left px-5 py-4 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${n.read_by_admin?'':'bg-blue-50/40 dark:bg-blue-900/10'}`}>
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-700 dark:text-slate-200 truncate">{n.nom}</p>
+                      <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{n.message_admin||txt.newTicket}</p>
+                      <p className="text-gray-300 dark:text-slate-600 text-xs mt-0.5 font-mono">{n.tracking_code}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                      {!n.read_by_admin&&<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"/>}
+                      <span className="text-gray-300 dark:text-slate-600 text-xs whitespace-nowrap">{new Date(n.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </button>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      </main>
     </div>
+
+    <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(110%)}to{opacity:1;transform:translateX(0)}}`}</style>
+  </div>
   )
 }

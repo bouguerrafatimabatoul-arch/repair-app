@@ -16,6 +16,7 @@ export default function App() {
   const [matriculeBac, setMatriculeBac] = useState('')
   const [anneeBac, setAnneeBac] = useState('')
   const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
   const [student, setStudent] = useState(null)
   const [chef, setChef] = useState(null)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
@@ -24,12 +25,19 @@ export default function App() {
 
   const handleStudentLogin = async () => {
     setMessage('')
+    const mat = matriculeBac.trim()
+    const year = anneeBac.trim()
+    if (!mat || !year) { setMessage(t.loginError); return }
+    if (!/^\d+$/.test(mat) || !/^\d{4}$/.test(year)) { setMessage(t.loginError); return }
+
+    setLoading(true)
     const { data, error } = await supabase
       .from('students')
       .select('*')
-      .eq('Matricule de Bac', matriculeBac)
-      .eq('Annee de Bac', parseInt(anneeBac))
+      .eq('Matricule de Bac', mat)
+      .eq('Annee de Bac', parseInt(year))
       .single()
+    setLoading(false)
 
     if (error || !data) { setMessage(t.loginError); return }
     setStudent(data)
@@ -98,7 +106,10 @@ export default function App() {
                   onFocus={e => e.target.style.border = '1px solid rgba(59,130,246,0.5)'}
                   onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
                   placeholder={t.bacMatriculePlaceholder}
-                  onChange={e => setMatriculeBac(e.target.value)} />
+                  value={matriculeBac}
+                  maxLength={20}
+                  onChange={e => setMatriculeBac(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
               </div>
 
               <div>
@@ -113,9 +124,15 @@ export default function App() {
                   onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
               </div>
 
-              <button onClick={handleStudentLogin}
-                className="w-full py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 mt-2"
+              <button onClick={handleStudentLogin} disabled={loading}
+                className="w-full py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
                 style={{background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', boxShadow: '0 8px 24px rgba(59,130,246,0.35)'}}>
+                {loading && (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                )}
                 {t.login}
               </button>
             </div>

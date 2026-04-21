@@ -1,20 +1,19 @@
-<<<<<<< HEAD
-=======
 # repair-app
->>>>>>> fd63df694cfe40d2a82f173b0e2d22fe16818a80
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+University Residence Maintenance Request System — built with React + Vite + Supabase.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Copy `.env.local.example` to `.env.local` and fill in your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
+2. `npm install`
+3. `npm run dev`
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Frontend**: React 19, Vite, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Realtime + Storage)
+- **Languages**: English / French / Arabic (RTL)

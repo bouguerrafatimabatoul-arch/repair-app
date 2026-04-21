@@ -74,8 +74,6 @@ export default function AdminLogin({ onLogin, onBack }) {
     if (!username || !password) { setMessage(txt.errorEmpty); return }
     setLoading(true)
 
-    console.log('Trying login with username:', username)
-
     const { data, error } = await supabase
       .from('workers')
       .select('*')
@@ -83,13 +81,11 @@ export default function AdminLogin({ onLogin, onBack }) {
       .eq('password', password.trim())
       .single()
 
-    console.log('Result:', data, 'Error:', error)
     setLoading(false)
 
     if (error || !data) { setMessage(txt.errorCredentials); return }
 
     const jobTitle = data['job title'] || data['Job title'] || data['job_title'] || ''
-    console.log('Job title found:', jobTitle)
 
     if (jobTitle.trim() !== CHEF_JOB_TITLE) {
       setMessage(txt.errorAccess)
