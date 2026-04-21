@@ -21,11 +21,6 @@ const priorityBg = {
   Low:    'rgba(16,185,129,0.1)',
 }
 
-const statusColors = {
-  'En attente': 'text-amber-400',
-  'En cours':   'text-blue-400',
-  'Résolu':     'text-emerald-400',
-}
 const statusBg = {
   'En attente': 'rgba(245,158,11,0.1)',
   'En cours':   'rgba(59,130,246,0.1)',
@@ -52,7 +47,7 @@ const glassInput = {
 }
 
 // ── FeedbackWidget — defined OUTSIDE main to prevent remounting ────────────────
-function FeedbackWidget({ ticket, existingFeedback, lang, t, onSubmit }) {
+function FeedbackWidget({ ticket, existingFeedback, t, onSubmit }) {
   const [rating, setRating] = useState(0)
   const [note,   setNote]   = useState('')
   const [done,   setDone]   = useState(false)
@@ -162,11 +157,119 @@ function TicketCard({ ticket, lang, t, feedbacks, onFeedbackSubmit }) {
         <FeedbackWidget
           ticket={ticket}
           existingFeedback={existingFeedback}
-          lang={lang}
           t={t}
           onSubmit={onFeedbackSubmit}
         />
       )}
+    </div>
+  )
+}
+
+
+function Header({ t, student, lang, setLang, notifications, showNotifs, setShowNotifs, markNotifsRead, unreadNotifs, notifRef, onLogout }) {
+  return (
+    <div className="rounded-xl p-4 mb-4 flex justify-between items-center" style={glassCard}>
+      <div>
+        <h1 className="font-bold text-base" style={{color:'#f0f6ff'}}>🔧 {t.appTitle}</h1>
+        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.3)'}}>
+          {student['Nom']} · {t.room} {student['Chambre']} · {t.pavilion} {student['Pavillon']}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1">
+          {languages.map(l => (
+            <button key={l.code} onClick={() => setLang(l.code)}
+              className="px-2 py-0.5 rounded-lg text-xs font-medium transition-all"
+              style={lang === l.code
+                ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}
+                :{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.08)'}}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markNotifsRead() }}
+            className="relative p-1.5 rounded-lg transition-all"
+            style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+            <span style={{color:'rgba(255,255,255,0.5)'}}>🔔</span>
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-1 -right-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+                style={{background:'#ef4444',fontSize:9}}>
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
+          </button>
+
+          {showNotifs && (
+            <div className="absolute right-0 top-9 w-72 rounded-xl z-30 overflow-hidden"
+              style={{background:'rgba(10,14,23,0.98)',backdropFilter:'blur(20px)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
+              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+                <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
+                  🔔 {lang === 'ar' ? 'الإشعارات' : lang === 'fr' ? 'Notifications' : 'Notifications'}
+                </span>
+                {notifications.length > 0 && (
+                  <button onClick={markNotifsRead} className="text-xs transition-colors" style={{color:'#60a5fa'}}>
+                    {lang === 'ar' ? 'تحديد كمقروء' : lang === 'fr' ? 'Tout lire' : 'Mark all read'}
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto divide-y" style={{borderColor:'rgba(255,255,255,0.04)'}}>
+                {notifications.length === 0 ? (
+                  <p className="text-center text-sm py-6" style={{color:'rgba(255,255,255,0.3)'}}>
+                    {lang === 'ar' ? 'لا توجد إشعارات' : lang === 'fr' ? 'Aucune notification' : 'No notifications yet'}
+                  </p>
+                ) : notifications.map((n, i) => (
+                  <div key={n.id || i}
+                    className="px-4 py-3 text-sm"
+                    style={{background:!n.read_by_student?'rgba(59,130,246,0.05)':'transparent'}}>
+                    <div className="flex items-start gap-2">
+                      {!n.read_by_student && (
+                        <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#60a5fa'}} />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium leading-snug" style={{color:'rgba(255,255,255,0.7)'}}>
+                          {n.message_student || (
+                            lang === 'ar' ? `تم تحديث حالة طلبك ${n.tracking_code}`
+                            : lang === 'fr' ? `Votre demande ${n.tracking_code} a été mise à jour`
+                            : `Your request ${n.tracking_code} was updated`
+                          )}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.25)'}}>
+                          {new Date(n.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button onClick={onLogout} className="text-xs transition-colors" style={{color:'#f87171'}}>{t.logout}</button>
+      </div>
+    </div>
+  )
+}
+
+function BottomNav({ t, view, onTabChange }) {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 flex z-10" style={{background:'rgba(8,11,18,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+      {[
+        { id: 'form',    icon: '✏️', label: t.newRequest },
+        { id: 'tickets', icon: '📋', label: t.myTickets },
+        { id: 'track',   icon: '🔍', label: t.trackNav },
+      ].map(tab => (
+        <button key={tab.id} onClick={() => onTabChange(tab.id)}
+          className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-all"
+          style={{color: view === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                  borderTop: view === tab.id ? '2px solid #3b82f6' : '2px solid transparent'}}>
+          <span style={{ fontSize: 16 }}>{tab.icon}</span>
+          {tab.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -242,7 +345,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   // ── Realtime subscriptions ─────────────────────────────────────────────────
   useEffect(() => {
-    fetchNotifications()
+    const loadNotifications = async () => {
+      await fetchNotifications()
+    }
+    loadNotifications()
 
     const safeName = student['Nom'].replace(/[^a-zA-Z0-9]/g, '_')
 
@@ -297,9 +403,12 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  useEffect(() => { if (view === 'tickets') fetchTickets() }, [view, fetchTickets])
-
   const unreadNotifs = notifications.filter(n => !n.read_by_student).length
+
+  const handleTabChange = async (nextView) => {
+    setView(nextView)
+    if (nextView === 'tickets') await fetchTickets()
+  }
 
   const markNotifsRead = async () => {
     const unread = notifications.filter(n => !n.read_by_student)
@@ -316,15 +425,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   }
 
   // ── Form logic ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    setProblemType(''); setPriority(''); setExactLocation('')
-    setAvailability(''); setAvailabilityStart(''); setAvailabilityEnd('')
-  }, [location])
-
-  useEffect(() => {
-    if (problemType) setPriority(assignPriority(problemType))
-  }, [problemType])
-
   const handleImageChange = e => {
     const file = e.target.files[0]
     if (!file) return
@@ -475,113 +575,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     }
   }
 
-  // ── Shared UI components ───────────────────────────────────────────────────
-  const Header = () => (
-    <div className="rounded-xl p-4 mb-4 flex justify-between items-center" style={glassCard}>
-      <div>
-        <h1 className="font-bold text-base" style={{color:'#f0f6ff'}}>🔧 {t.appTitle}</h1>
-        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.3)'}}>
-          {student['Nom']} · {t.room} {student['Chambre']} · {t.pavilion} {student['Pavillon']}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {/* Language switcher */}
-        <div className="flex gap-1">
-          {languages.map(l => (
-            <button key={l.code} onClick={() => setLang(l.code)}
-              className="px-2 py-0.5 rounded-lg text-xs font-medium transition-all"
-              style={lang === l.code
-                ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}
-                :{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.08)'}}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Bell */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markNotifsRead() }}
-            className="relative p-1.5 rounded-lg transition-all"
-            style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
-            <span style={{color:'rgba(255,255,255,0.5)'}}>🔔</span>
-            {unreadNotifs > 0 && (
-              <span className="absolute -top-1 -right-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
-                style={{background:'#ef4444',fontSize:9}}>
-                {unreadNotifs > 9 ? '9+' : unreadNotifs}
-              </span>
-            )}
-          </button>
-
-          {showNotifs && (
-            <div className="absolute right-0 top-9 w-72 rounded-xl z-30 overflow-hidden"
-              style={{background:'rgba(10,14,23,0.98)',backdropFilter:'blur(20px)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
-              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-                <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
-                  🔔 {lang === 'ar' ? 'الإشعارات' : lang === 'fr' ? 'Notifications' : 'Notifications'}
-                </span>
-                {notifications.length > 0 && (
-                  <button onClick={markNotifsRead} className="text-xs transition-colors" style={{color:'#60a5fa'}}>
-                    {lang === 'ar' ? 'تحديد كمقروء' : lang === 'fr' ? 'Tout lire' : 'Mark all read'}
-                  </button>
-                )}
-              </div>
-              <div className="max-h-64 overflow-y-auto divide-y" style={{borderColor:'rgba(255,255,255,0.04)'}}>
-                {notifications.length === 0 ? (
-                  <p className="text-center text-sm py-6" style={{color:'rgba(255,255,255,0.3)'}}>
-                    {lang === 'ar' ? 'لا توجد إشعارات' : lang === 'fr' ? 'Aucune notification' : 'No notifications yet'}
-                  </p>
-                ) : notifications.map((n, i) => (
-                  <div key={n.id || i}
-                    className="px-4 py-3 text-sm"
-                    style={{background:!n.read_by_student?'rgba(59,130,246,0.05)':'transparent'}}>
-                    <div className="flex items-start gap-2">
-                      {!n.read_by_student && (
-                        <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#60a5fa'}} />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-snug" style={{color:'rgba(255,255,255,0.7)'}}>
-                          {n.message_student || (
-                            lang === 'ar' ? `تم تحديث حالة طلبك ${n.tracking_code}`
-                            : lang === 'fr' ? `Votre demande ${n.tracking_code} a été mise à jour`
-                            : `Your request ${n.tracking_code} was updated`
-                          )}
-                        </p>
-                        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.25)'}}>
-                          {new Date(n.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button onClick={onLogout} className="text-xs transition-colors" style={{color:'#f87171'}}>{t.logout}</button>
-      </div>
-    </div>
-  )
-
-  const BottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 flex z-10" style={{background:'rgba(8,11,18,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
-      {[
-        { id: 'form',    icon: '✏️', label: t.newRequest },
-        { id: 'tickets', icon: '📋', label: t.myTickets },
-        { id: 'track',   icon: '🔍', label: t.trackNav },
-      ].map(tab => (
-        <button key={tab.id} onClick={() => setView(tab.id)}
-          className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-all"
-          style={{color: view === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                  borderTop: view === tab.id ? '2px solid #3b82f6' : '2px solid transparent'}}>
-          <span style={{ fontSize: 16 }}>{tab.icon}</span>
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  )
-
   // ── Views ──────────────────────────────────────────────────────────────────
 
   if (view === 'success') {
@@ -601,7 +594,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             style={{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}}>
             {t.trackAnother}
           </button>
-          <button onClick={() => { fetchTickets(); setView('tickets') }}
+          <button onClick={() => handleTabChange('tickets')}
             className="w-full py-2.5 rounded-xl text-sm font-medium transition-all"
             style={{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.5)',border:'1px solid rgba(255,255,255,0.08)'}}>
             {t.myTickets}
@@ -615,7 +608,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
-          <Header />
+          <Header
+            t={t}
+            student={student}
+            lang={lang}
+            setLang={setLang}
+            notifications={notifications}
+            showNotifs={showNotifs}
+            setShowNotifs={setShowNotifs}
+            markNotifsRead={markNotifsRead}
+            unreadNotifs={unreadNotifs}
+            notifRef={notifRef}
+            onLogout={onLogout}
+          />
           <div className="rounded-xl p-6" style={glassCard}>
             <h2 className="font-bold text-lg mb-4" style={{color:'#f0f6ff'}}>{t.trackTitle}</h2>
             <div className="flex gap-2 mb-4">
@@ -688,7 +693,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                   <FeedbackWidget
                     ticket={trackedTicket}
                     existingFeedback={feedbacks.find(f => f.ticket_id === trackedTicket.id)}
-                    lang={lang}
                     t={t}
                     onSubmit={handleFeedbackSubmit}
                   />
@@ -697,7 +701,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             )}
           </div>
         </div>
-        <BottomNav />
+        <BottomNav t={t} view={view} onTabChange={handleTabChange} />
       </div>
     )
   }
@@ -706,7 +710,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
-          <Header />
+          <Header
+            t={t}
+            student={student}
+            lang={lang}
+            setLang={setLang}
+            notifications={notifications}
+            showNotifs={showNotifs}
+            setShowNotifs={setShowNotifs}
+            markNotifsRead={markNotifsRead}
+            unreadNotifs={unreadNotifs}
+            notifRef={notifRef}
+            onLogout={onLogout}
+          />
           {loadingTickets && (
             <p className="text-center text-sm py-8" style={{color:'rgba(255,255,255,0.3)'}}>...</p>
           )}
@@ -728,7 +744,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             ))}
           </div>
         </div>
-        <BottomNav />
+        <BottomNav t={t} view={view} onTabChange={handleTabChange} />
       </div>
     )
   }
@@ -741,7 +757,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   return (
     <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
       <div className="max-w-lg mx-auto p-4">
-        <Header />
+        <Header
+          t={t}
+          student={student}
+          lang={lang}
+          setLang={setLang}
+          notifications={notifications}
+          showNotifs={showNotifs}
+          setShowNotifs={setShowNotifs}
+          markNotifsRead={markNotifsRead}
+          unreadNotifs={unreadNotifs}
+          notifRef={notifRef}
+          onLogout={onLogout}
+        />
         <div className="rounded-xl p-6 space-y-5" style={glassCard}>
 
           {/* Location */}
@@ -749,7 +777,15 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.location} *</label>
             <div className="flex gap-2">
               {Object.entries(t.locations).map(([key, label]) => (
-                <button key={key} onClick={() => setLocation(key)}
+                <button key={key} onClick={() => {
+                    setLocation(key)
+                    setProblemType('')
+                    setPriority('')
+                    setExactLocation('')
+                    setAvailability('')
+                    setAvailabilityStart('')
+                    setAvailabilityEnd('')
+                  }}
                   className="flex-1 p-2 rounded-xl text-sm font-medium transition-all"
                   style={location === key
                     ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.4)'}
@@ -789,7 +825,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.problemType} *</label>
               <div className="grid grid-cols-2 gap-2">
                 {t.problemTypes[location].map(type => (
-                  <button key={type} onClick={() => setProblemType(type)}
+                  <button key={type} onClick={() => { setProblemType(type); setPriority(assignPriority(type)) }}
                     className="p-2 rounded-xl text-sm text-start transition-all"
                     style={problemType === type
                       ?{background:'rgba(59,130,246,0.15)',color:'#93c5fd',border:'1px solid rgba(59,130,246,0.35)'}
@@ -922,7 +958,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           </button>
         </div>
       </div>
-      <BottomNav />
+      <BottomNav t={t} view={view} onTabChange={handleTabChange} />
     </div>
   )
 }
