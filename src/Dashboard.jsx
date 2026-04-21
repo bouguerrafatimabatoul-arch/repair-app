@@ -156,15 +156,26 @@ const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-y
 function Donut({slices,size=96}){
   const total=slices.reduce((s,sl)=>s+sl.value,0)
   if(!total) return <div className="text-xs text-gray-400 py-4 text-center">—</div>
-  const r=38,c=2*Math.PI*r; let cum=0
+  const r=38,c=2*Math.PI*r
+  const segments=slices.reduce((acc,sl,i)=>{
+    const prev=acc[i-1]
+    const start=prev?prev.start+prev.ratio:0
+    const ratio=sl.value/total
+    acc.push({sl,start,ratio})
+    return acc
+  },[])
   return(
     <svg viewBox="0 0 100 100" width={size} height={size}>
       <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="16"/>
-      {slices.map((sl,i)=>{const d=sl.value/total*c,off=c-cum*c;cum+=sl.value/total;return(
-        <circle key={i} cx="50" cy="50" r={r} fill="none" stroke={sl.color} strokeWidth="16"
-          strokeDasharray={`${d} ${c-d}`} strokeDashoffset={off}
-          style={{transform:'rotate(-90deg)',transformOrigin:'50% 50%'}}/>
-      )})}
+      {segments.map(({sl,start},i)=>{
+        const d=(sl.value/total)*c
+        const off=c-start*c
+        return(
+          <circle key={i} cx="50" cy="50" r={r} fill="none" stroke={sl.color} strokeWidth="16"
+            strokeDasharray={`${d} ${c-d}`} strokeDashoffset={off}
+            style={{transform:'rotate(-90deg)',transformOrigin:'50% 50%'}}/>
+        )
+      })}
       <text x="50" y="54" textAnchor="middle" fontSize="13" fontWeight="600" fill="#374151">{total}</text>
     </svg>
   )
@@ -273,10 +284,6 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // Auto-assign priority when type changes
-  useEffect(() => {
-    set('priorite', assignPriority(form.problem_type))
-  }, [form.problem_type])
 
   const handleSubmit = async () => {
     setError('')
@@ -368,7 +375,7 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{txt.newTicketType}</label>
-              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+              <select className={inputCls} value={form.problem_type} onChange={e=>{ const v=e.target.value; set('problem_type',v); set('priorite',assignPriority(v)) }}>
                 {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
               </select>
             </div>
@@ -553,7 +560,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{txt.type}</label>
-              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+              <select className={inputCls} value={form.problem_type} onChange={e=>{ const v=e.target.value; set('problem_type',v); set('priorite',assignPriority(v)) }}>
                 {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
               </select>
             </div>
@@ -642,7 +649,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
 // ─── View-only Ticket modal (with Edit button) ─────────────────────────────────
 function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,onEdit}){
   const [note,setNote]=useState(ticket.admin_note||'')
-  const [tools,setTools]=useState(ticket.tools_used||'')
+  const tools=ticket.tools_used||''
   const [sel,setSel]=useState(()=>{try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]}})
   const [saving,setSaving]=useState(false)
   const fb=feedbacks.find(f=>f.ticket_id===ticket.id)
@@ -1137,8 +1144,6 @@ export default function Dashboard({chef,onLogout}){
   const [editTicket,setEditTicket]=useState(null)   // ← NEW: ticket being edited
   const [showNewTicket,setShowNewTicket]=useState(false)  // ← NEW
   const [updating,setUpdating]=useState(false)
-  const [showNotifs,setShowNotifs]=useState(false)
-  const [showCharts,setShowCharts]=useState(false)
   const [showExport,setShowExport]=useState(false)
   const [showSettings,setShowSettings]=useState(false)
   const [activeView,setActiveView]=useState('tickets')
@@ -1148,7 +1153,7 @@ export default function Dashboard({chef,onLogout}){
 
   useEffect(()=>{
     document.documentElement.classList.toggle('dark',darkMode)
-    try{localStorage.setItem('dm',darkMode?'1':'0')}catch{}
+    try{localStorage.setItem('dm',darkMode?'1':'0')}catch{/* ignore storage write errors */}
   },[darkMode])
   const [toasts,setToasts]=useState([])
   const [search,setSearch]=useState('')
@@ -1156,27 +1161,26 @@ export default function Dashboard({chef,onLogout}){
   const [filterOpen,setFilterOpen]=useState(false)
   const [filters,setFilters]=useState({dateFrom:'',dateTo:'',pavillon:'',status:'',priority:'',type:'',location:''})
   const [settings,setSettings]=useState(()=>{try{return{...DEFAULT_SETTINGS,...JSON.parse(localStorage.getItem('dashSettings')||'{}')}}catch{return DEFAULT_SETTINGS}})
-  const notifRef=useRef(),exportRef=useRef(),timerRef=useRef({})
+  const exportRef=useRef(),timerRef=useRef({})
 
   const addToast = useCallback((t) => {
     setToasts(prev=>[...prev,t])
     timerRef.current[t.id]=setTimeout(()=>setToasts(prev=>prev.filter(x=>x.id!==t.id)),5000)
   },[])
 
-  const fetchAll=useCallback(async()=>{
-    setLoading(true)
-    const [{data:td},{data:wd},{data:fd},{data:nd}]=await Promise.all([
-      supabase.from('tickets').select('*').order('created_at',{ascending:false}),
-      supabase.from('workers').select('*'),
-      supabase.from('feedback').select('*'),
-      supabase.from('notifications').select('*').order('created_at',{ascending:false}).limit(50),
-    ])
-    if(td)setTickets(td);if(wd)setWorkers(wd);if(fd)setFeedbacks(fd);if(nd)setNotifications(nd)
-    setLoading(false)
-  },[])
-
   useEffect(()=>{
-    fetchAll()
+    const loadInitial = async () => {
+      setLoading(true)
+      const [{data:td},{data:wd},{data:fd},{data:nd}]=await Promise.all([
+        supabase.from('tickets').select('*').order('created_at',{ascending:false}),
+        supabase.from('workers').select('*'),
+        supabase.from('feedback').select('*'),
+        supabase.from('notifications').select('*').order('created_at',{ascending:false}).limit(50),
+      ])
+      if(td)setTickets(td);if(wd)setWorkers(wd);if(fd)setFeedbacks(fd);if(nd)setNotifications(nd)
+      setLoading(false)
+    }
+    loadInitial()
     const tc=supabase.channel('db-tickets')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},p=>{
         setTickets(prev=>[p.new,...prev])
@@ -1191,17 +1195,19 @@ export default function Dashboard({chef,onLogout}){
         setTickets(prev=>prev.filter(t=>t.id!==p.old.id))
       })
       .subscribe()
+    const timers=timerRef.current
     const nc=supabase.channel('db-notifs')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},p=>{
         if(p.new.type==='new_ticket')setNotifications(prev=>prev.some(n=>n.tracking_code===p.new.tracking_code&&n.type==='new_ticket')?prev:[p.new,...prev])
       })
       .subscribe()
-    return()=>{supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timerRef.current).forEach(clearTimeout)}
-  },[fetchAll,addToast])
+    return()=>{
+      supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timers).forEach(clearTimeout)
+    }
+  },[addToast])
 
   useEffect(()=>{
     const h=e=>{
-      if(notifRef.current&&!notifRef.current.contains(e.target))setShowNotifs(false)
       if(exportRef.current&&!exportRef.current.contains(e.target))setShowExport(false)
     }
     document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)
@@ -1224,7 +1230,7 @@ export default function Dashboard({chef,onLogout}){
     await supabase.from('notifications').update({read_by_admin:true}).eq('read_by_admin',false)
     setNotifications(prev=>prev.map(n=>({...n,read_by_admin:true})))
   }
-  const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{}}
+  const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{/* ignore storage write errors */}}
 
   // ── NEW: handlers for new/edit/delete ──────────────────────────────────────
   const handleTicketCreated = (newTicket) => {
@@ -1272,7 +1278,7 @@ export default function Dashboard({chef,onLogout}){
     </head><body><h2 style="margin-bottom:12px">🔧 ${txt.title} — ${new Date().toLocaleDateString()}</h2>
     <table><thead><tr><th>Code</th><th>${txt.student}</th><th>${txt.location}</th><th>${txt.type}</th><th>${txt.priority}</th><th>${txt.status}</th><th>${txt.date}</th><th>${txt.adminNote}</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <script>window.onload=()=>window.print()<\/script></body></html>`
+    <script>window.onload=()=>window.print()</script></body></html>`
     const w=window.open('','_blank');w.document.write(html);w.document.close();setShowExport(false)
   }
 
@@ -1301,8 +1307,8 @@ export default function Dashboard({chef,onLogout}){
   },[processed,search,filters])
 
   const totalPages=Math.max(1,Math.ceil(filtered.length/settings.ticketsPerPage))
-  const paginated=filtered.slice((page-1)*settings.ticketsPerPage,page*settings.ticketsPerPage)
-  useEffect(()=>setPage(1),[search,filters])
+  const currentPage=Math.min(page,totalPages)
+  const paginated=filtered.slice((currentPage-1)*settings.ticketsPerPage,currentPage*settings.ticketsPerPage)
 
   const total=tickets.length,pend=tickets.filter(t=>t.statut==='En attente').length
   const inp=tickets.filter(t=>t.statut==='En cours').length,resN=tickets.filter(t=>t.statut==='Résolu').length
@@ -1448,7 +1454,7 @@ export default function Dashboard({chef,onLogout}){
 
         <div className="my-3">
           <input className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-500 shadow-sm"
-            placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>setSearch(e.target.value)}/>
+            placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1501,14 +1507,14 @@ export default function Dashboard({chef,onLogout}){
                 </div>
                 {totalPages>1&&(
                   <div className="flex items-center justify-between px-4 py-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
-                    <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {page}/{totalPages}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {currentPage}/{totalPages}</span>
                     <div className="flex gap-1">
-                      <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">←</button>
+                      <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">←</button>
                       {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
-                        const pg=Math.min(Math.max(page-2+i,1),totalPages)
-                        return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border dark:border-slate-700 text-xs ${pg===page?'bg-blue-600 text-white border-blue-600':'hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400'}`}>{pg}</button>
+                        const pg=Math.min(Math.max(currentPage-2+i,1),totalPages)
+                        return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border dark:border-slate-700 text-xs ${pg===currentPage?'bg-blue-600 text-white border-blue-600':'hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400'}`}>{pg}</button>
                       })}
-                      <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">→</button>
+                      <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">→</button>
                     </div>
                   </div>
                 )}
