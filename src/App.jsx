@@ -18,7 +18,7 @@ export default function App() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [student, setStudent] = useState(null)
-  const [chef, setChef] = useState(null)
+  const [admin, setAdmin] = useState(null)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
 
   const t = translations[lang]
@@ -34,8 +34,8 @@ export default function App() {
     const { data, error } = await supabase
       .from('students')
       .select('*')
-      .eq('Matricule de Bac', mat)
-      .eq('Annee de Bac', parseInt(year))
+      .eq('matricule_bac', mat)
+      .eq('annee_bac', parseInt(year))
       .single()
     setLoading(false)
 
@@ -43,9 +43,9 @@ export default function App() {
     setStudent(data)
   }
 
-  if (chef) return <Dashboard chef={chef} onLogout={() => setChef(null)} />
+  if (admin) return <Dashboard admin={admin} onLogout={() => setAdmin(null)} />
 
-  if (showAdminLogin) return <AdminLogin onLogin={setChef} onBack={() => setShowAdminLogin(false)} />
+  if (showAdminLogin) return <AdminLogin onLogin={setAdmin} onBack={() => setShowAdminLogin(false)} />
 
   if (student) return (
     <TicketForm student={student} onLogout={() => setStudent(null)} lang={lang} setLang={setLang} />

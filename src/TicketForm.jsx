@@ -21,11 +21,6 @@ const priorityBg = {
   Low:    'rgba(16,185,129,0.1)',
 }
 
-const statusColors = {
-  'En attente': 'text-amber-400',
-  'En cours':   'text-blue-400',
-  'Résolu':     'text-emerald-400',
-}
 const statusBg = {
   'En attente': 'rgba(245,158,11,0.1)',
   'En cours':   'rgba(59,130,246,0.1)',
@@ -52,7 +47,7 @@ const glassInput = {
 }
 
 // ── FeedbackWidget — defined OUTSIDE main to prevent remounting ────────────────
-function FeedbackWidget({ ticket, existingFeedback, lang, t, onSubmit }) {
+function FeedbackWidget({ ticket, existingFeedback, t, onSubmit }) {
   const [rating, setRating] = useState(0)
   const [note,   setNote]   = useState('')
   const [done,   setDone]   = useState(false)
@@ -162,7 +157,6 @@ function TicketCard({ ticket, lang, t, feedbacks, onFeedbackSubmit }) {
         <FeedbackWidget
           ticket={ticket}
           existingFeedback={existingFeedback}
-          lang={lang}
           t={t}
           onSubmit={onFeedbackSubmit}
         />
@@ -171,321 +165,17 @@ function TicketCard({ ticket, lang, t, feedbacks, onFeedbackSubmit }) {
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
-export default function TicketForm({ student, onLogout, lang, setLang }) {
-  const t = translations[lang]
-  const [view, setView] = useState('form')
 
-  // Form state
-  const [location,          setLocation]          = useState('')
-  const [exactLocation,     setExactLocation]      = useState('')
-  const [problemType,       setProblemType]         = useState('')
-  const [priority,          setPriority]            = useState('')
-  const [description,       setDescription]         = useState('')
-  const [availability,      setAvailability]        = useState('')
-  const [availabilityStart, setAvailabilityStart]   = useState('')
-  const [availabilityEnd,   setAvailabilityEnd]     = useState('')
-  const [imageFile,         setImageFile]           = useState(null)
-  const [imagePreview,      setImagePreview]        = useState(null)
-  const imagePreviewRef = useRef(null)
-  const [message,           setMessage]             = useState('')
-  const [submitting,        setSubmitting]          = useState(false)
-  const [trackingCode,      setTrackingCode]        = useState('')
-  const fileRef = useRef()
-
-  // Data
-  const [tickets,       setTickets]       = useState([])
-  const [loadingTickets,setLoadingTickets]= useState(false)
-  const [feedbacks,     setFeedbacks]     = useState([])
-
-  // Track view
-  const [trackInput,    setTrackInput]    = useState('')
-  const [trackedTicket, setTrackedTicket] = useState(null)
-  const [trackError,    setTrackError]    = useState('')
-
-  // Notifications
-  const [notifications, setNotifications] = useState([])
-  const [showNotifs,    setShowNotifs]    = useState(false)
-  const notifRef = useRef(null)
-
-  const fetchNotifications = useCallback(async () => {
-    const { data: myTickets } = await supabase
-      .from('tickets')
-      .select('tracking_code')
-      .eq('nom', student['Nom'])
-
-    if (!myTickets || myTickets.length === 0) return
-
-    const codes = myTickets.map(t => t.tracking_code)
-
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('type', 'status_update')
-      .in('tracking_code', codes)
-      .order('created_at', { ascending: false })
-      .limit(30)
-
-    if (data) setNotifications(data)
-  }, [student])
-
-  const fetchTickets = useCallback(async () => {
-    setLoadingTickets(true)
-    const [{ data: td }, { data: fd }] = await Promise.all([
-      supabase.from('tickets').select('*').eq('nom', student['Nom']).order('created_at', { ascending: false }),
-      supabase.from('feedback').select('*').eq('nom', student['Nom']),
-    ])
-    if (td) setTickets(td)
-    if (fd) setFeedbacks(fd)
-    setLoadingTickets(false)
-  }, [student])
-
-  // ── Realtime subscriptions ─────────────────────────────────────────────────
-  useEffect(() => {
-    fetchNotifications()
-
-    const safeName = student['Nom'].replace(/[^a-zA-Z0-9]/g, '_')
-
-    const notifChannel = supabase
-      .channel('student-notifs-' + safeName)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
-        const n = payload.new
-        if (n.type === 'status_update' && n.nom === student['Nom']) {
-          setNotifications(prev => [n, ...prev])
-        }
-      })
-      .subscribe()
-
-    const ticketChannel = supabase
-      .channel('student-tickets-' + safeName)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, payload => {
-        if (payload.new.nom === student['Nom']) {
-          setTickets(prev => prev.map(t => t.id === payload.new.id ? payload.new : t))
-          setTrackedTicket(prev => prev?.id === payload.new.id ? payload.new : prev)
-        }
-      })
-      .subscribe()
-
-    const feedbackChannel = supabase
-      .channel('student-feedback-' + safeName)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, payload => {
-        if (payload.new.nom === student['Nom']) {
-          setFeedbacks(prev => {
-            if (prev.some(f => f.ticket_id === payload.new.ticket_id)) return prev
-            return [...prev, payload.new]
-          })
-        }
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(notifChannel)
-      supabase.removeChannel(ticketChannel)
-      supabase.removeChannel(feedbackChannel)
-    }
-  }, [student, fetchNotifications])
-
-  // Revoke object URL on unmount to prevent memory leak
-  useEffect(() => {
-    return () => { if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current) }
-  }, [])
-
-  // Close notif dropdown on outside click
-  useEffect(() => {
-    const h = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-
-  useEffect(() => { if (view === 'tickets') fetchTickets() }, [view, fetchTickets])
-
-  const unreadNotifs = notifications.filter(n => !n.read_by_student).length
-
-  const markNotifsRead = async () => {
-    const unread = notifications.filter(n => !n.read_by_student)
-    if (unread.length === 0) return
-    const ids = unread.map(n => n.id).filter(Boolean)
-    if (ids.length > 0) {
-      try {
-        await supabase.from('notifications').update({ read_by_student: true }).in('id', ids)
-      } catch {
-        // Column may not exist — silently ignore, local state still updates
-      }
-    }
-    setNotifications(prev => prev.map(n => ({ ...n, read_by_student: true })))
-  }
-
-  // ── Form logic ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    setProblemType(''); setPriority(''); setExactLocation('')
-    setAvailability(''); setAvailabilityStart(''); setAvailabilityEnd('')
-  }, [location])
-
-  useEffect(() => {
-    if (problemType) setPriority(assignPriority(problemType))
-  }, [problemType])
-
-  const handleImageChange = e => {
-    const file = e.target.files[0]
-    if (!file) return
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(file.type)) {
-      setMessage(lang === 'ar' ? 'يرجى استخدام صور JPG أو PNG أو WEBP فقط.' : lang === 'fr' ? 'Veuillez utiliser uniquement des images JPG, PNG ou WEBP.' : 'Please use JPG, PNG or WEBP images only.')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage(lang === 'ar' ? 'حجم الصورة يجب أن يكون أقل من 5 ميغابايت.' : lang === 'fr' ? "La photo doit faire moins de 5 Mo." : 'Image must be under 5 MB.')
-      return
-    }
-    const url = URL.createObjectURL(file)
-    if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current)
-    imagePreviewRef.current = url
-    setImageFile(file)
-    setImagePreview(url)
-  }
-
-  const uploadImage = async (file, code) => {
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-    const path = `tickets/${code}.${ext}`
-    const { error } = await supabase.storage.from('ticket-images').upload(path, file, { upsert: true, contentType: file.type })
-    if (error) { console.error('Upload error:', error); return null }
-    const { data } = supabase.storage.from('ticket-images').getPublicUrl(path)
-    return data.publicUrl
-  }
-
-  const checkDuplicate = async () => {
-    const enProblemType = toEnKey(problemType)
-    const enLocation    = toEnLoc(t.locations?.[location] || location)
-
-    const { data } = await supabase
-      .from('tickets')
-      .select('id, problem_type, location, statut')
-      .eq('nom', student['Nom'])
-      .neq('statut', 'Résolu')
-
-    if (!data) return null
-
-    return data.find(existing => {
-      return toEnKey(existing.problem_type) === enProblemType &&
-             toEnLoc(existing.location) === enLocation
-    }) || null
-  }
-
-  const handleSubmit = async () => {
-    setMessage('')
-    if (!location || !problemType || !description) { setMessage(t.fillAll); return }
-    if (location !== 'room' && !exactLocation.trim()) { setMessage(t.fillExactLocation); return }
-
-    const isNightShift = availability === nightShiftLabel[lang]
-    if (NEEDS_AVAILABILITY.includes(location) && !isNightShift) {
-      if (!availabilityStart || !availabilityEnd) { setMessage(t.fillAll); return }
-      if (availabilityEnd <= availabilityStart) {
-        setMessage(t.dir === 'rtl'
-          ? 'وقت النهاية يجب أن يكون بعد وقت البداية'
-          : 'End time must be after start time')
-        return
-      }
-    }
-
-    setSubmitting(true)
-    const duplicate = await checkDuplicate()
-    if (duplicate) {
-      const dupMsg = {
-        en: `You already have an open request for this problem (${tf(duplicate.problem_type,'en',PM)}) — please wait for it to be resolved before submitting a new one.`,
-        fr: `Vous avez déjà une demande ouverte pour ce problème (${tf(duplicate.problem_type,'fr',PM)}) — veuillez attendre qu'elle soit résolue avant d'en soumettre une nouvelle.`,
-        ar: `لديك طلب مفتوح بالفعل لهذه المشكلة (${tf(duplicate.problem_type,'ar',PM)}) — يرجى الانتظار حتى يتم حله قبل تقديم طلب جديد.`,
-      }
-      setMessage(dupMsg[lang] || dupMsg.en)
-      setSubmitting(false)
-      return
-    }
-
-    const code = generateTrackingCode()
-    let imageUrl = null
-    if (imageFile) imageUrl = await uploadImage(imageFile, code)
-
-    const finalAvailability = isNightShift ? nightShiftLabel[lang]
-      : availabilityStart && availabilityEnd ? `${availabilityStart} → ${availabilityEnd}` : null
-
-    const { error } = await supabase.from('tickets').insert([{
-      tracking_code:  code,
-      nom:            student['Nom'],
-      chambre:        student['Chambre'],
-      pavillon:       student['Pavillon'],
-      location:       t.locations[location],
-      exact_location: location === 'room'
-        ? `${t.room} ${student['Chambre']} — ${t.pavilion} ${student['Pavillon']}`
-        : exactLocation,
-      problem_type:   problemType,
-      priorite:       priority,
-      description,
-      availability:   NEEDS_AVAILABILITY.includes(location) ? finalAvailability : null,
-      image_url:      imageUrl,
-      statut:         'En attente',
-    }])
-
-    if (!error) {
-      await supabase.from('notifications').insert([{
-        tracking_code:  code,
-        nom:            student['Nom'],
-        message_admin:  `${student['Nom']} — ${problemType}`,
-        type:           'new_ticket',
-        read_by_admin:  false,
-      }])
-    }
-
-    setSubmitting(false)
-    if (error) { setMessage('Error: ' + error.message); return }
-
-    setTrackingCode(code)
-    setView('success')
-    setLocation(''); setProblemType(''); setPriority('')
-    setDescription(''); setAvailability(''); setExactLocation('')
-    setAvailabilityStart(''); setAvailabilityEnd('')
-    setImageFile(null)
-    if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null }
-    setImagePreview(null)
-  }
-
-  const handleTrack = async () => {
-    setTrackError(''); setTrackedTicket(null)
-    const { data, error } = await supabase
-      .from('tickets').select('*')
-      .eq('tracking_code', trackInput.trim().toUpperCase()).single()
-    if (error || !data) setTrackError(t.trackNotFound)
-    else setTrackedTicket(data)
-  }
-
-  const handleFeedbackSubmit = async (ticket, rating, note) => {
-    const { data, error } = await supabase.from('feedback').insert([{
-      ticket_id:     ticket.id,
-      tracking_code: ticket.tracking_code,
-      nom:           student['Nom'],
-      chambre:       student['Chambre'],
-      pavillon:      student['Pavillon'],
-      rating,
-      note: note || null,
-    }]).select().single()
-
-    if (!error && data) {
-      setFeedbacks(prev => {
-        if (prev.some(f => f.ticket_id === data.ticket_id)) return prev
-        return [...prev, data]
-      })
-    }
-  }
-
-  // ── Shared UI components ───────────────────────────────────────────────────
-  const Header = () => (
+function Header({ t, student, lang, setLang, notifications, showNotifs, setShowNotifs, markNotifsRead, unreadNotifs, notifRef, onLogout }) {
+  return (
     <div className="rounded-xl p-4 mb-4 flex justify-between items-center" style={glassCard}>
       <div>
         <h1 className="font-bold text-base" style={{color:'#f0f6ff'}}>🔧 {t.appTitle}</h1>
         <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.3)'}}>
-          {student['Nom']} · {t.room} {student['Chambre']} · {t.pavilion} {student['Pavillon']}
+          {student['nom']} · {t.room} {student['chambre']} · {t.pavilion} {student['pavillon']}{student['residence']&&` · ${t.residence} ${student['residence']}`}
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {/* Language switcher */}
         <div className="flex gap-1">
           {languages.map(l => (
             <button key={l.code} onClick={() => setLang(l.code)}
@@ -498,7 +188,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           ))}
         </div>
 
-        {/* Bell */}
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markNotifsRead() }}
@@ -563,15 +252,17 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
       </div>
     </div>
   )
+}
 
-  const BottomNav = () => (
+function BottomNav({ t, view, onTabChange }) {
+  return (
     <div className="fixed bottom-0 left-0 right-0 flex z-10" style={{background:'rgba(8,11,18,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
       {[
         { id: 'form',    icon: '✏️', label: t.newRequest },
         { id: 'tickets', icon: '📋', label: t.myTickets },
         { id: 'track',   icon: '🔍', label: t.trackNav },
       ].map(tab => (
-        <button key={tab.id} onClick={() => setView(tab.id)}
+        <button key={tab.id} onClick={() => onTabChange(tab.id)}
           className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-all"
           style={{color: view === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.3)',
                   borderTop: view === tab.id ? '2px solid #3b82f6' : '2px solid transparent'}}>
@@ -581,6 +272,310 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
       ))}
     </div>
   )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+export default function TicketForm({ student, onLogout, lang, setLang }) {
+  const t = translations[lang]
+  const [view, setView] = useState('form')
+
+  // Form state
+  const [location,          setLocation]          = useState('')
+  const [exactLocation,     setExactLocation]      = useState('')
+  const [problemType,       setProblemType]         = useState('')
+  const [priority,          setPriority]            = useState('')
+  const [description,       setDescription]         = useState('')
+  const [availability,      setAvailability]        = useState('')
+  const [availabilityStart, setAvailabilityStart]   = useState('')
+  const [availabilityEnd,   setAvailabilityEnd]     = useState('')
+  const [imageFile,         setImageFile]           = useState(null)
+  const [imagePreview,      setImagePreview]        = useState(null)
+  const imagePreviewRef = useRef(null)
+  const [message,           setMessage]             = useState('')
+  const [submitting,        setSubmitting]          = useState(false)
+  const [trackingCode,      setTrackingCode]        = useState('')
+  const fileRef = useRef()
+
+  // Data
+  const [tickets,       setTickets]       = useState([])
+  const [loadingTickets,setLoadingTickets]= useState(false)
+  const [feedbacks,     setFeedbacks]     = useState([])
+
+  // Track view
+  const [trackInput,    setTrackInput]    = useState('')
+  const [trackedTicket, setTrackedTicket] = useState(null)
+  const [trackError,    setTrackError]    = useState('')
+
+  // Notifications
+  const [notifications, setNotifications] = useState([])
+  const [showNotifs,    setShowNotifs]    = useState(false)
+  const notifRef = useRef(null)
+
+  const fetchNotifications = useCallback(async () => {
+    const { data: myTickets } = await supabase
+      .from('tickets')
+      .select('tracking_code')
+      .eq('nom', student['nom'])
+
+    if (!myTickets || myTickets.length === 0) return
+
+    const codes = myTickets.map(t => t.tracking_code)
+
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('type', 'status_update')
+      .in('tracking_code', codes)
+      .order('created_at', { ascending: false })
+      .limit(30)
+
+    if (data) setNotifications(data)
+  }, [student])
+
+  const fetchTickets = useCallback(async () => {
+    setLoadingTickets(true)
+    const [{ data: td }, { data: fd }] = await Promise.all([
+      supabase.from('tickets').select('*').eq('nom', student['nom']).order('created_at', { ascending: false }),
+      supabase.from('feedback').select('*').eq('nom', student['nom']),
+    ])
+    if (td) setTickets(td)
+    if (fd) setFeedbacks(fd)
+    setLoadingTickets(false)
+  }, [student])
+
+  // ── Realtime subscriptions ─────────────────────────────────────────────────
+  useEffect(() => {
+    const loadNotifications = async () => {
+      await fetchNotifications()
+    }
+    loadNotifications()
+
+    const safeName = student['nom'].replace(/[^a-zA-Z0-9]/g, '_')
+
+    const notifChannel = supabase
+      .channel('student-notifs-' + safeName)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
+        const n = payload.new
+        if (n.type === 'status_update' && n.nom === student['nom']) {
+          setNotifications(prev => [n, ...prev])
+        }
+      })
+      .subscribe()
+
+    const ticketChannel = supabase
+      .channel('student-tickets-' + safeName)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, payload => {
+        if (payload.new.nom === student['nom']) {
+          setTickets(prev => prev.map(t => t.id === payload.new.id ? payload.new : t))
+          setTrackedTicket(prev => prev?.id === payload.new.id ? payload.new : prev)
+        }
+      })
+      .subscribe()
+
+    const feedbackChannel = supabase
+      .channel('student-feedback-' + safeName)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, payload => {
+        if (payload.new.nom === student['nom']) {
+          setFeedbacks(prev => {
+            if (prev.some(f => f.ticket_id === payload.new.ticket_id)) return prev
+            return [...prev, payload.new]
+          })
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(ticketChannel)
+      supabase.removeChannel(feedbackChannel)
+    }
+  }, [student, fetchNotifications])
+
+  // Revoke object URL on unmount to prevent memory leak
+  useEffect(() => {
+    return () => { if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current) }
+  }, [])
+
+  // Close notif dropdown on outside click
+  useEffect(() => {
+    const h = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const unreadNotifs = notifications.filter(n => !n.read_by_student).length
+
+  const handleTabChange = async (nextView) => {
+    setView(nextView)
+    if (nextView === 'tickets') await fetchTickets()
+  }
+
+  const markNotifsRead = async () => {
+    const unread = notifications.filter(n => !n.read_by_student)
+    if (unread.length === 0) return
+    const ids = unread.map(n => n.id).filter(Boolean)
+    if (ids.length > 0) {
+      try {
+        await supabase.from('notifications').update({ read_by_student: true }).in('id', ids)
+      } catch {
+        // Column may not exist — silently ignore, local state still updates
+      }
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, read_by_student: true })))
+  }
+
+  // ── Form logic ───────────────────────────────────────────────────────────────
+  const handleImageChange = e => {
+    const file = e.target.files[0]
+    if (!file) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setMessage(lang === 'ar' ? 'يرجى استخدام صور JPG أو PNG أو WEBP فقط.' : lang === 'fr' ? 'Veuillez utiliser uniquement des images JPG, PNG ou WEBP.' : 'Please use JPG, PNG or WEBP images only.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage(lang === 'ar' ? 'حجم الصورة يجب أن يكون أقل من 5 ميغابايت.' : lang === 'fr' ? "La photo doit faire moins de 5 Mo." : 'Image must be under 5 MB.')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current)
+    imagePreviewRef.current = url
+    setImageFile(file)
+    setImagePreview(url)
+  }
+
+  const uploadImage = async (file, code) => {
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+    const path = `tickets/${code}.${ext}`
+    const { error } = await supabase.storage.from('ticket-images').upload(path, file, { upsert: true, contentType: file.type })
+    if (error) { console.error('Upload error:', error); return null }
+    const { data } = supabase.storage.from('ticket-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  const checkDuplicate = async () => {
+    const enProblemType = toEnKey(problemType)
+    const enLocation    = toEnLoc(t.locations?.[location] || location)
+
+    const { data } = await supabase
+      .from('tickets')
+      .select('id, problem_type, location, statut')
+      .eq('nom', student['nom'])
+      .neq('statut', 'Résolu')
+
+    if (!data) return null
+
+    return data.find(existing => {
+      return toEnKey(existing.problem_type) === enProblemType &&
+             toEnLoc(existing.location) === enLocation
+    }) || null
+  }
+
+  const handleSubmit = async () => {
+    setMessage('')
+    if (!location || !problemType || !description) { setMessage(t.fillAll); return }
+    if (location !== 'room' && !exactLocation.trim()) { setMessage(t.fillExactLocation); return }
+
+    const isNightShift = availability === nightShiftLabel[lang]
+    if (NEEDS_AVAILABILITY.includes(location) && !isNightShift) {
+      if (!availabilityStart || !availabilityEnd) { setMessage(t.fillAll); return }
+      if (availabilityEnd <= availabilityStart) {
+        setMessage(t.dir === 'rtl'
+          ? 'وقت النهاية يجب أن يكون بعد وقت البداية'
+          : 'End time must be after start time')
+        return
+      }
+    }
+
+    setSubmitting(true)
+    const duplicate = await checkDuplicate()
+    if (duplicate) {
+      const dupMsg = {
+        en: `You already have an open request for this problem (${tf(duplicate.problem_type,'en',PM)}) — please wait for it to be resolved before submitting a new one.`,
+        fr: `Vous avez déjà une demande ouverte pour ce problème (${tf(duplicate.problem_type,'fr',PM)}) — veuillez attendre qu'elle soit résolue avant d'en soumettre une nouvelle.`,
+        ar: `لديك طلب مفتوح بالفعل لهذه المشكلة (${tf(duplicate.problem_type,'ar',PM)}) — يرجى الانتظار حتى يتم حله قبل تقديم طلب جديد.`,
+      }
+      setMessage(dupMsg[lang] || dupMsg.en)
+      setSubmitting(false)
+      return
+    }
+
+    const code = generateTrackingCode()
+    let imageUrl = null
+    if (imageFile) imageUrl = await uploadImage(imageFile, code)
+
+    const finalAvailability = isNightShift ? nightShiftLabel[lang]
+      : availabilityStart && availabilityEnd ? `${availabilityStart} → ${availabilityEnd}` : null
+
+    const { error } = await supabase.from('tickets').insert([{
+      tracking_code:  code,
+      nom:            student['nom'],
+      chambre:        student['chambre'],
+      pavillon:       student['pavillon'],
+      residence:      student['residence']||null,
+      residence_id:   student['residence_id']||null,
+      location:       t.locations[location],
+      exact_location: location === 'room'
+        ? `${t.room} ${student['chambre']} — ${t.pavilion} ${student['pavillon']}`
+        : exactLocation,
+      problem_type:   problemType,
+      priorite:       priority,
+      description,
+      availability:   NEEDS_AVAILABILITY.includes(location) ? finalAvailability : null,
+      image_url:      imageUrl,
+      statut:         'En attente',
+    }])
+
+    if (!error) {
+      await supabase.from('notifications').insert([{
+        tracking_code:  code,
+        nom:            student['nom'],
+        message_admin:  `${student['nom']} — ${problemType}`,
+        type:           'new_ticket',
+        read_by_admin:  false,
+      }])
+    }
+
+    setSubmitting(false)
+    if (error) { setMessage('Error: ' + error.message); return }
+
+    setTrackingCode(code)
+    setView('success')
+    setLocation(''); setProblemType(''); setPriority('')
+    setDescription(''); setAvailability(''); setExactLocation('')
+    setAvailabilityStart(''); setAvailabilityEnd('')
+    setImageFile(null)
+    if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null }
+    setImagePreview(null)
+  }
+
+  const handleTrack = async () => {
+    setTrackError(''); setTrackedTicket(null)
+    const { data, error } = await supabase
+      .from('tickets').select('*')
+      .eq('tracking_code', trackInput.trim().toUpperCase()).single()
+    if (error || !data) setTrackError(t.trackNotFound)
+    else setTrackedTicket(data)
+  }
+
+  const handleFeedbackSubmit = async (ticket, rating, note) => {
+    const { data, error } = await supabase.from('feedback').insert([{
+      ticket_id:     ticket.id,
+      tracking_code: ticket.tracking_code,
+      nom:           student['nom'],
+      chambre:       student['chambre'],
+      pavillon:      student['pavillon'],
+      rating,
+      note: note || null,
+    }]).select().single()
+
+    if (!error && data) {
+      setFeedbacks(prev => {
+        if (prev.some(f => f.ticket_id === data.ticket_id)) return prev
+        return [...prev, data]
+      })
+    }
+  }
 
   // ── Views ──────────────────────────────────────────────────────────────────
 
@@ -601,7 +596,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             style={{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}}>
             {t.trackAnother}
           </button>
-          <button onClick={() => { fetchTickets(); setView('tickets') }}
+          <button onClick={() => handleTabChange('tickets')}
             className="w-full py-2.5 rounded-xl text-sm font-medium transition-all"
             style={{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.5)',border:'1px solid rgba(255,255,255,0.08)'}}>
             {t.myTickets}
@@ -615,7 +610,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
-          <Header />
+          <Header
+            t={t}
+            student={student}
+            lang={lang}
+            setLang={setLang}
+            notifications={notifications}
+            showNotifs={showNotifs}
+            setShowNotifs={setShowNotifs}
+            markNotifsRead={markNotifsRead}
+            unreadNotifs={unreadNotifs}
+            notifRef={notifRef}
+            onLogout={onLogout}
+          />
           <div className="rounded-xl p-6" style={glassCard}>
             <h2 className="font-bold text-lg mb-4" style={{color:'#f0f6ff'}}>{t.trackTitle}</h2>
             <div className="flex gap-2 mb-4">
@@ -688,7 +695,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                   <FeedbackWidget
                     ticket={trackedTicket}
                     existingFeedback={feedbacks.find(f => f.ticket_id === trackedTicket.id)}
-                    lang={lang}
                     t={t}
                     onSubmit={handleFeedbackSubmit}
                   />
@@ -697,7 +703,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             )}
           </div>
         </div>
-        <BottomNav />
+        <BottomNav t={t} view={view} onTabChange={handleTabChange} />
       </div>
     )
   }
@@ -706,7 +712,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
         <div className="max-w-lg mx-auto p-4">
-          <Header />
+          <Header
+            t={t}
+            student={student}
+            lang={lang}
+            setLang={setLang}
+            notifications={notifications}
+            showNotifs={showNotifs}
+            setShowNotifs={setShowNotifs}
+            markNotifsRead={markNotifsRead}
+            unreadNotifs={unreadNotifs}
+            notifRef={notifRef}
+            onLogout={onLogout}
+          />
           {loadingTickets && (
             <p className="text-center text-sm py-8" style={{color:'rgba(255,255,255,0.3)'}}>...</p>
           )}
@@ -728,7 +746,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             ))}
           </div>
         </div>
-        <BottomNav />
+        <BottomNav t={t} view={view} onTabChange={handleTabChange} />
       </div>
     )
   }
@@ -741,7 +759,19 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   return (
     <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
       <div className="max-w-lg mx-auto p-4">
-        <Header />
+        <Header
+          t={t}
+          student={student}
+          lang={lang}
+          setLang={setLang}
+          notifications={notifications}
+          showNotifs={showNotifs}
+          setShowNotifs={setShowNotifs}
+          markNotifsRead={markNotifsRead}
+          unreadNotifs={unreadNotifs}
+          notifRef={notifRef}
+          onLogout={onLogout}
+        />
         <div className="rounded-xl p-6 space-y-5" style={glassCard}>
 
           {/* Location */}
@@ -749,7 +779,15 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.location} *</label>
             <div className="flex gap-2">
               {Object.entries(t.locations).map(([key, label]) => (
-                <button key={key} onClick={() => setLocation(key)}
+                <button key={key} onClick={() => {
+                    setLocation(key)
+                    setProblemType('')
+                    setPriority('')
+                    setExactLocation('')
+                    setAvailability('')
+                    setAvailabilityStart('')
+                    setAvailabilityEnd('')
+                  }}
                   className="flex-1 p-2 rounded-xl text-sm font-medium transition-all"
                   style={location === key
                     ?{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.4)'}
@@ -768,7 +806,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
               </p>
               {location === 'room' ? (
                 <p className="text-sm font-medium" style={{color:'#e2e8f0'}}>
-                  {t.room} {student['Chambre']} — {t.pavilion} {student['Pavillon']}
+                  {t.room} {student['chambre']} — {t.pavilion} {student['pavillon']}
                 </p>
               ) : (
                 <input
@@ -789,7 +827,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{color:'rgba(255,255,255,0.4)'}}>{t.problemType} *</label>
               <div className="grid grid-cols-2 gap-2">
                 {t.problemTypes[location].map(type => (
-                  <button key={type} onClick={() => setProblemType(type)}
+                  <button key={type} onClick={() => { setProblemType(type); setPriority(assignPriority(type)) }}
                     className="p-2 rounded-xl text-sm text-start transition-all"
                     style={problemType === type
                       ?{background:'rgba(59,130,246,0.15)',color:'#93c5fd',border:'1px solid rgba(59,130,246,0.35)'}
@@ -922,7 +960,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           </button>
         </div>
       </div>
-      <BottomNav />
+      <BottomNav t={t} view={view} onTabChange={handleTabChange} />
     </div>
   )
 }

@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
 
-const CHEF_JOB_TITLE = 'رئيس مصلحة النظافة و الصيانة و الأمن الداخلي'
+const ROLE_LABELS = {
+  directeur_general:    { fr: 'Directeur Général',      ar: 'المدير العام' },
+  directeur_residence:  { fr: 'Directeur Résidence',     ar: 'مدير الإقامة' },
+  chef_service_technique:{ fr: 'Chef Service Technique', ar: 'رئيس مصلحة الصيانة' },
+}
 
 const t = {
   en: {
@@ -16,8 +20,7 @@ const t = {
     loggingIn: 'Logging in...',
     errorEmpty: 'Please fill in all fields.',
     errorCredentials: 'Incorrect username or password.',
-    errorAccess: 'Access denied. Only the service manager can access this platform.',
-    footer: 'Access reserved for the service manager only',
+    footer: 'Administration access only',
     back: '← Back to student portal',
   },
   fr: {
@@ -32,8 +35,7 @@ const t = {
     loggingIn: 'Connexion...',
     errorEmpty: 'Veuillez remplir tous les champs.',
     errorCredentials: "Nom d'utilisateur ou mot de passe incorrect.",
-    errorAccess: 'Accès refusé. Seul le chef de service peut accéder à cette plateforme.',
-    footer: 'Accès réservé au chef de service uniquement',
+    footer: 'Accès réservé à l\'administration',
     back: '← Retour à l\'espace étudiant',
   },
   ar: {
@@ -48,8 +50,7 @@ const t = {
     loggingIn: 'جارٍ الدخول...',
     errorEmpty: 'يرجى ملء جميع الحقول.',
     errorCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
-    errorAccess: 'تم رفض الوصول. هذه المنصة مخصصة لرئيس المصلحة فقط.',
-    footer: 'الوصول مخصص لرئيس المصلحة فقط',
+    footer: 'الوصول مخصص للإدارة فقط',
     back: '← العودة إلى بوابة الطلاب',
   },
 }
@@ -75,7 +76,7 @@ export default function AdminLogin({ onLogin, onBack }) {
     setLoading(true)
 
     const { data, error } = await supabase
-      .from('workers')
+      .from('admins')
       .select('*')
       .eq('username', username.trim())
       .eq('password', password.trim())
@@ -84,13 +85,6 @@ export default function AdminLogin({ onLogin, onBack }) {
     setLoading(false)
 
     if (error || !data) { setMessage(txt.errorCredentials); return }
-
-    const jobTitle = data['job title'] || data['Job title'] || data['job_title'] || ''
-
-    if (jobTitle.trim() !== CHEF_JOB_TITLE) {
-      setMessage(txt.errorAccess)
-      return
-    }
 
     onLogin(data)
   }

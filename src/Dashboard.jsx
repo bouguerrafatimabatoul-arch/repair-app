@@ -21,7 +21,7 @@ const T = {
   en:{dir:'ltr',title:'Dashboard',serviceManager:'Service Manager',
     total:'Total',pending:'Pending',inProgress:'In Progress',resolved:'Resolved',urgent:'Urgent',
     loading:'Loading…',noTickets:'No tickets found.',search:'Search name, room, code…',
-    location:'Location',type:'Type',priority:'Priority',status:'Status',date:'Date',student:'Student',room:'Room',
+    location:'Location',type:'Type',priority:'Priority',status:'Status',date:'Date',student:'Student',room:'Room',residence:'Residence',
     changeStatus:'Change status',description:'Description',availability:'Availability',
     submittedOn:'Submitted',resolvedOn:'Resolved',exactLocation:'Exact spot',
     adminNote:'Admin note',adminNotePlaceholder:'Note for the student…',saveNote:'Save',
@@ -43,7 +43,7 @@ const T = {
     save:'Save settings',saved:'Saved!',
     printAll:'Print all',printFiltered:'Print filtered',
     addWorkerTitle:'Add new worker',addWorkerName:'Last name',addWorkerFirst:'First name',
-    addWorkerMatricule:'Matricule',addWorkerGrade:'Grade',addWorkerBtn:'Add worker',
+    addWorkerPhone:'Phone',addWorkerGrade:'Grade',addWorkerBtn:'Add worker',
     addWorkerJobTitle:'Job title',addWorkerSaved:'Worker added!',addWorkerError:'Error adding worker.',
     filtersTitle:'Filters',filterDate:'Date range',filterFrom:'From',filterTo:'To',
     filterPavillon:'Pavilion',filterStatus:'Status',filterPriority:'Priority',
@@ -63,7 +63,7 @@ const T = {
   fr:{dir:'ltr',title:'Tableau de bord',serviceManager:'Chef de service',
     total:'Total',pending:'En attente',inProgress:'En cours',resolved:'Résolus',urgent:'Urgents',
     loading:'Chargement…',noTickets:'Aucun ticket.',search:'Nom, chambre, code…',
-    location:'Emplacement',type:'Type',priority:'Priorité',status:'Statut',date:'Date',student:'Étudiant',room:'Chambre',
+    location:'Emplacement',type:'Type',priority:'Priorité',status:'Statut',date:'Date',student:'Étudiant',room:'Chambre',residence:'Résidence',
     changeStatus:'Changer le statut',description:'Description',availability:'Disponibilité',
     submittedOn:'Soumis',resolvedOn:'Résolu',exactLocation:'Endroit précis',
     adminNote:'Note admin',adminNotePlaceholder:"Note pour l'étudiant…",saveNote:'Enregistrer',
@@ -85,7 +85,7 @@ const T = {
     save:'Enregistrer',saved:'Sauvegardé !',
     printAll:'Imprimer tout',printFiltered:'Imprimer filtré',
     addWorkerTitle:'Ajouter un ouvrier',addWorkerName:'Nom',addWorkerFirst:'Prénom',
-    addWorkerMatricule:'Matricule',addWorkerGrade:'Grade',addWorkerBtn:'Ajouter',
+    addWorkerPhone:'Téléphone',addWorkerGrade:'Grade',addWorkerBtn:'Ajouter',
     addWorkerSaved:'Ouvrier ajouté !',addWorkerError:"Erreur lors de l'ajout.",
     filtersTitle:'Filtres',filterDate:'Plage de dates',filterFrom:'Du',filterTo:'Au',
     filterPavillon:'Pavillon',filterStatus:'Statut',filterPriority:'Priorité',
@@ -103,7 +103,7 @@ const T = {
   ar:{dir:'rtl',title:'لوحة التحكم',serviceManager:'رئيس المصلحة',
     total:'المجموع',pending:'قيد الانتظار',inProgress:'جارٍ',resolved:'تم الحل',urgent:'عاجل',
     loading:'جارٍ التحميل…',noTickets:'لا توجد طلبات.',search:'بحث…',
-    location:'الموقع',type:'النوع',priority:'الأولوية',status:'الحالة',date:'التاريخ',student:'الطالب',room:'الغرفة',
+    location:'الموقع',type:'النوع',priority:'الأولوية',status:'الحالة',date:'التاريخ',student:'الطالب',room:'الغرفة',residence:'السكن',
     changeStatus:'تغيير الحالة',description:'الوصف',availability:'التوفر',
     submittedOn:'تاريخ التقديم',resolvedOn:'تاريخ الحل',exactLocation:'المكان الدقيق',
     adminNote:'ملاحظة الإدارة',adminNotePlaceholder:'ملاحظة للطالب…',saveNote:'حفظ',
@@ -125,7 +125,7 @@ const T = {
     save:'حفظ الإعدادات',saved:'تم الحفظ!',
     printAll:'طباعة الكل',printFiltered:'طباعة المفلتر',
     addWorkerTitle:'إضافة عامل جديد',addWorkerName:'اللقب',addWorkerFirst:'الاسم',
-    addWorkerMatricule:'الرقم التسلسلي',addWorkerGrade:'الرتبة',addWorkerBtn:'إضافة',
+    addWorkerPhone:'الهاتف',addWorkerGrade:'الرتبة',addWorkerBtn:'إضافة',
     addWorkerJobTitle:'المسمى الوظيفي',addWorkerSaved:'تم إضافة العامل!',addWorkerError:'خطأ في الإضافة.',
     filtersTitle:'الفلاتر',filterDate:'نطاق التاريخ',filterFrom:'من',filterTo:'إلى',
     filterPavillon:'الجناح',filterStatus:'الحالة',filterPriority:'الأولوية',
@@ -145,7 +145,7 @@ const T = {
 const LANGS = [{code:'en',label:'EN'},{code:'fr',label:'FR'},{code:'ar',label:'ع'}]
 const DEFAULT_SETTINGS = {
   escalateLowToMedium:48, escalateMediumToHigh:24, ticketsPerPage:25,
-  visibleCols:{code:true,student:true,room:true,pavilion:true,type:true,priority:true,status:true,date:true},
+  visibleCols:{code:true,student:true,residence:true,room:true,pavilion:true,type:true,priority:true,status:true,date:true},
 }
 const SC = {'En attente':'bg-gray-100 text-gray-600','En cours':'bg-blue-100 text-blue-700','Résolu':'bg-green-100 text-green-700'}
 const PC = {High:'bg-red-100 text-red-700',Medium:'bg-yellow-100 text-yellow-700',Low:'bg-green-100 text-green-700'}
@@ -156,15 +156,26 @@ const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-y
 function Donut({slices,size=96}){
   const total=slices.reduce((s,sl)=>s+sl.value,0)
   if(!total) return <div className="text-xs text-gray-400 py-4 text-center">—</div>
-  const r=38,c=2*Math.PI*r; let cum=0
+  const r=38,c=2*Math.PI*r
+  const segments=slices.reduce((acc,sl,i)=>{
+    const prev=acc[i-1]
+    const start=prev?prev.start+prev.ratio:0
+    const ratio=sl.value/total
+    acc.push({sl,start,ratio})
+    return acc
+  },[])
   return(
     <svg viewBox="0 0 100 100" width={size} height={size}>
       <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="16"/>
-      {slices.map((sl,i)=>{const d=sl.value/total*c,off=c-cum*c;cum+=sl.value/total;return(
-        <circle key={i} cx="50" cy="50" r={r} fill="none" stroke={sl.color} strokeWidth="16"
-          strokeDasharray={`${d} ${c-d}`} strokeDashoffset={off}
-          style={{transform:'rotate(-90deg)',transformOrigin:'50% 50%'}}/>
-      )})}
+      {segments.map(({sl,start},i)=>{
+        const d=(sl.value/total)*c
+        const off=c-start*c
+        return(
+          <circle key={i} cx="50" cy="50" r={r} fill="none" stroke={sl.color} strokeWidth="16"
+            strokeDasharray={`${d} ${c-d}`} strokeDashoffset={off}
+            style={{transform:'rotate(-90deg)',transformOrigin:'50% 50%'}}/>
+        )
+      })}
       <text x="50" y="54" textAnchor="middle" fontSize="13" fontWeight="600" fill="#374151">{total}</text>
     </svg>
   )
@@ -222,7 +233,7 @@ function WorkerPicker({workers,selected,onChange,txt}){
     document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)
   },[])
   const toggle=id=>onChange(selected.includes(id)?selected.filter(x=>x!==id):[...selected,id])
-  const names=workers.filter(w=>selected.includes(w['N°'])).map(w=>`${w['Nom']} ${w['Prénom']||''}`.trim())
+  const names=workers.filter(w=>selected.includes(w['numero'])).map(w=>`${w['nom']} ${w['prenom']||''}`.trim())
   return(
     <div className="relative" ref={ref}>
       <button onClick={()=>setOpen(!open)}
@@ -237,8 +248,8 @@ function WorkerPicker({workers,selected,onChange,txt}){
           {workers.length===0
             ?<p className="text-xs text-gray-400 p-3">{txt.noWorkers}</p>
             :workers.map(w=>{
-              const id=w['N°'],name=`${w['Nom']} ${w['Prénom']||''}`.trim()
-              const role=w['job title']||w['job_title']||w['Job title']||''
+              const id=w['numero'],name=`${w['nom']} ${w['prenom']||''}`.trim()
+              const role=w['job_title']||''
               const sel=selected.includes(id)
               return(
                 <button key={id} onClick={()=>toggle(id)}
@@ -261,7 +272,7 @@ function WorkerPicker({workers,selected,onChange,txt}){
 }
 
 // ─── NEW TICKET MODAL ──────────────────────────────────────────────────────────
-function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
+function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast, residenceId }) {
   const [form, setForm] = useState({
     nom: '', chambre: '', pavillon: '', location: 'Room',
     exact_location: '', problem_type: 'Electricity', priorite: 'High',
@@ -273,10 +284,6 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // Auto-assign priority when type changes
-  useEffect(() => {
-    set('priorite', assignPriority(form.problem_type))
-  }, [form.problem_type])
 
   const handleSubmit = async () => {
     setError('')
@@ -299,6 +306,7 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
       availability:   form.availability.trim() || null,
       statut:         form.statut,
       assigned_workers: selWorkers.length ? JSON.stringify(selWorkers) : null,
+      residence_id:   residenceId||null,
     }]).select().single()
     setSaving(false)
     if (err) { setError(txt.newTicketError + ' ' + err.message); return }
@@ -368,7 +376,7 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{txt.newTicketType}</label>
-              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+              <select className={inputCls} value={form.problem_type} onChange={e=>{ const v=e.target.value; set('problem_type',v); set('priorite',assignPriority(v)) }}>
                 {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
               </select>
             </div>
@@ -553,7 +561,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{txt.type}</label>
-              <select className={inputCls} value={form.problem_type} onChange={e=>set('problem_type',e.target.value)}>
+              <select className={inputCls} value={form.problem_type} onChange={e=>{ const v=e.target.value; set('problem_type',v); set('priorite',assignPriority(v)) }}>
                 {ALL_PROBLEM_TYPES.map(t=><option key={t} value={t}>{tf(t,lang,PM)}</option>)}
               </select>
             </div>
@@ -640,9 +648,9 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
 }
 
 // ─── View-only Ticket modal (with Edit button) ─────────────────────────────────
-function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,onEdit}){
+function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,isReadOnly,onEdit}){
   const [note,setNote]=useState(ticket.admin_note||'')
-  const [tools,setTools]=useState(ticket.tools_used||'')
+  const tools=ticket.tools_used||''
   const [sel,setSel]=useState(()=>{try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]}})
   const [saving,setSaving]=useState(false)
   const fb=feedbacks.find(f=>f.ticket_id===ticket.id)
@@ -660,11 +668,10 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${SC[ticket.statut]}`}>{txt.statuses[ticket.statut]}</span>
-            {/* Edit button */}
-            <button onClick={onEdit}
+            {!isReadOnly&&<button onClick={onEdit}
               className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-600 text-xs font-medium border border-gray-200 transition-colors">
               ✏️ {lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}
-            </button>
+            </button>}
             <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl ml-1">✕</button>
           </div>
         </div>
@@ -684,13 +691,14 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
           {ticket.availability&&<p className="text-sm text-gray-600">🕐 <span className="font-medium">{txt.availability}:</span> {ticket.availability}</p>}
           {ticket.image_url&&<div><p className="text-xs text-gray-400 mb-1 font-medium">📷 {txt.image}</p><img src={ticket.image_url} alt="ticket" className="w-full rounded-xl max-h-48 object-cover" onError={e=>e.target.style.display='none'}/></div>}
           {fb&&<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"><p className="text-xs font-medium text-yellow-700 mb-1">⭐ {txt.feedback}</p><p className="text-yellow-500 text-xl">{'★'.repeat(fb.rating)}{'☆'.repeat(5-fb.rating)}</p>{fb.note&&<p className="text-xs text-gray-600 mt-1 italic">"{fb.note}"</p>}</div>}
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">👷 {txt.assignWorkers}</label><WorkerPicker workers={workers} selected={sel} onChange={setSel} txt={txt}/></div>
-          <div>
+          {!isReadOnly&&<div><label className="block text-xs font-medium text-gray-500 mb-1.5">👷 {txt.assignWorkers}</label><WorkerPicker workers={workers} selected={sel} onChange={setSel} txt={txt}/></div>}
+          {!isReadOnly&&<div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">📋 {txt.adminNote}</label>
             <textarea className="w-full border border-gray-200 rounded-xl p-3 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder={txt.adminNotePlaceholder} value={note} onChange={e=>setNote(e.target.value)}/>
             <button onClick={handleSave} disabled={saving} className="w-full mt-1.5 bg-gray-800 text-white py-2.5 rounded-xl text-sm hover:bg-gray-900 disabled:opacity-50 font-medium">{saving?'…':txt.saveNote}</button>
-          </div>
-          <div>
+          </div>}
+          {ticket.admin_note&&isReadOnly&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">📋 {txt.adminNote}</p><p className="text-sm text-blue-700">{ticket.admin_note}</p></div>}
+          {!isReadOnly&&<div>
             <p className="text-xs font-medium text-gray-500 mb-2">🔄 {txt.changeStatus}</p>
             <div className="flex gap-2">
               {['En attente','En cours','Résolu'].map(s=>(
@@ -700,7 +708,7 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
         </div>
       </div>
     </div>
@@ -711,22 +719,22 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
 function SettingsPanel({settings,onSave,txt,onClose}){
   const [d,setD]=useState(settings)
   const [saved,setSaved]=useState(false)
-  const [newWorker,setNewWorker]=useState({nom:'',prenom:'',matricule:'',grade:'',jobTitle:''})
+  const [newWorker,setNewWorker]=useState({nom:'',prenom:'',phone:'',grade:'',jobTitle:''})
   const [workerMsg,setWorkerMsg]=useState('')
   const [addingWorker,setAddingWorker]=useState(false)
   const save=()=>{onSave(d);setSaved(true);setTimeout(()=>setSaved(false),2000)}
-  const colLabels={code:'Code',student:txt.student,room:txt.room,pavilion:txt.filterPavillon,type:txt.type,priority:txt.priority,status:txt.status,date:txt.date}
+  const colLabels={code:'Code',student:txt.student,residence:txt.residence,room:txt.room,pavilion:txt.filterPavillon,type:txt.type,priority:txt.priority,status:txt.status,date:txt.date}
 
   const handleAddWorker=async()=>{
     if(!newWorker.nom.trim()||!newWorker.prenom.trim()){setWorkerMsg('⚠️ Name and first name required');return}
     setAddingWorker(true)
-    const insertData={'Nom':newWorker.nom.trim(),'Prénom':newWorker.prenom.trim(),'Grade':newWorker.grade.trim()||'عامل صيانة','job title':newWorker.jobTitle.trim()||'عامل صيانة'}
-    if(newWorker.matricule) insertData['Matricule']=parseInt(newWorker.matricule)
+    const insertData={nom:newWorker.nom.trim(),prenom:newWorker.prenom.trim(),grade:newWorker.grade.trim()||'عامل صيانة',job_title:newWorker.jobTitle.trim()||'عامل صيانة'}
+    if(newWorker.phone) insertData['phone']=newWorker.phone.trim()
     const {error}=await supabase.from('workers').insert([insertData])
     setAddingWorker(false)
     if(error){setWorkerMsg('❌ '+error.message);return}
     setWorkerMsg('✅ '+txt.addWorkerSaved)
-    setNewWorker({nom:'',prenom:'',matricule:'',grade:'',jobTitle:''})
+    setNewWorker({nom:'',prenom:'',phone:'',grade:'',jobTitle:''})
     setTimeout(()=>setWorkerMsg(''),3000)
   }
   return(
@@ -797,9 +805,9 @@ function SettingsPanel({settings,onSave,txt,onClose}){
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerMatricule}</label>
-                  <input type="number" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.matricule} onChange={e=>setNewWorker(x=>({...x,matricule:e.target.value}))} placeholder="870012345"/>
+                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerPhone}</label>
+                  <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    value={newWorker.phone} onChange={e=>setNewWorker(x=>({...x,phone:e.target.value}))} placeholder="0550 123 456"/>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerGrade}</label>
@@ -993,7 +1001,7 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
 // ─── Worker Drawer ─────────────────────────────────────────────────────────────
 function WorkerDrawer({worker, tickets, txt, lang, onClose}){
   const workerTickets=useMemo(()=>{
-    const id=worker['N°']
+    const id=worker['numero']
     return tickets
       .filter(t=>{try{return JSON.parse(t.assigned_workers||'[]').includes(id)}catch{return false}})
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
@@ -1028,13 +1036,14 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shrink-0">
-                {worker['Nom']?.[0]}{worker['Prénom']?.[0]}
+                {worker['nom']?.[0]}{worker['prenom']?.[0]}
               </div>
               <div>
-                <h3 className="font-bold text-white text-lg leading-tight">{worker['Nom']} {worker['Prénom']}</h3>
-                <p className="text-slate-400 text-sm mt-0.5">{worker['Grade']||'—'}</p>
-                {worker['job title']&&<p className="text-slate-500 text-xs mt-0.5">{worker['job title']}</p>}
-                {worker['Matricule']&&<p className="text-slate-600 text-xs font-mono mt-1">#{worker['Matricule']}</p>}
+                <h3 className="font-bold text-white text-lg leading-tight">{worker['nom']} {worker['prenom']}</h3>
+                <p className="text-slate-400 text-sm mt-0.5">{worker['grade']||'—'}</p>
+                {worker['job_title']&&<p className="text-slate-500 text-xs mt-0.5">{worker['job_title']}</p>}
+                {worker['residence']&&<p className="text-slate-500 text-xs mt-0.5">🏠 {worker['residence']}</p>}
+                {worker['phone']&&<p className="text-slate-500 text-xs mt-1">📞 {worker['phone']}</p>}
               </div>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 text-xl leading-none">✕</button>
@@ -1125,8 +1134,16 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
   )
 }
 
-export default function Dashboard({chef,onLogout}){
+const ROLE_LABELS = {
+  directeur_general:     { en:'Director General',       fr:'Directeur Général',      ar:'المدير العام' },
+  directeur_residence:   { en:'Residence Director',     fr:'Directeur Résidence',    ar:'مدير الإقامة' },
+  chef_service_technique:{ en:'Technical Service Chief',fr:'Chef Service Technique', ar:'رئيس مصلحة الصيانة' },
+}
+
+export default function Dashboard({admin,onLogout}){
   const [lang,setLang]=useState('fr')
+  const isReadOnly = admin.role !== 'chef_service_technique'
+  const isGlobal   = admin.role === 'directeur_general'
   const txt=T[lang]
   const [tickets,setTickets]=useState([])
   const [workers,setWorkers]=useState([])
@@ -1137,8 +1154,6 @@ export default function Dashboard({chef,onLogout}){
   const [editTicket,setEditTicket]=useState(null)   // ← NEW: ticket being edited
   const [showNewTicket,setShowNewTicket]=useState(false)  // ← NEW
   const [updating,setUpdating]=useState(false)
-  const [showNotifs,setShowNotifs]=useState(false)
-  const [showCharts,setShowCharts]=useState(false)
   const [showExport,setShowExport]=useState(false)
   const [showSettings,setShowSettings]=useState(false)
   const [activeView,setActiveView]=useState('tickets')
@@ -1148,7 +1163,7 @@ export default function Dashboard({chef,onLogout}){
 
   useEffect(()=>{
     document.documentElement.classList.toggle('dark',darkMode)
-    try{localStorage.setItem('dm',darkMode?'1':'0')}catch{}
+    try{localStorage.setItem('dm',darkMode?'1':'0')}catch{/* ignore storage write errors */}
   },[darkMode])
   const [toasts,setToasts]=useState([])
   const [search,setSearch]=useState('')
@@ -1156,27 +1171,36 @@ export default function Dashboard({chef,onLogout}){
   const [filterOpen,setFilterOpen]=useState(false)
   const [filters,setFilters]=useState({dateFrom:'',dateTo:'',pavillon:'',status:'',priority:'',type:'',location:''})
   const [settings,setSettings]=useState(()=>{try{return{...DEFAULT_SETTINGS,...JSON.parse(localStorage.getItem('dashSettings')||'{}')}}catch{return DEFAULT_SETTINGS}})
-  const notifRef=useRef(),exportRef=useRef(),timerRef=useRef({})
+  const exportRef=useRef(),timerRef=useRef({})
 
   const addToast = useCallback((t) => {
     setToasts(prev=>[...prev,t])
     timerRef.current[t.id]=setTimeout(()=>setToasts(prev=>prev.filter(x=>x.id!==t.id)),5000)
   },[])
 
-  const fetchAll=useCallback(async()=>{
-    setLoading(true)
-    const [{data:td},{data:wd},{data:fd},{data:nd}]=await Promise.all([
-      supabase.from('tickets').select('*').order('created_at',{ascending:false}),
-      supabase.from('workers').select('*'),
-      supabase.from('feedback').select('*'),
-      supabase.from('notifications').select('*').order('created_at',{ascending:false}).limit(50),
-    ])
-    if(td)setTickets(td);if(wd)setWorkers(wd);if(fd)setFeedbacks(fd);if(nd)setNotifications(nd)
-    setLoading(false)
-  },[])
-
   useEffect(()=>{
-    fetchAll()
+    const loadInitial = async () => {
+      setLoading(true)
+      let tq=supabase.from('tickets').select('*').order('created_at',{ascending:false})
+      let wq=supabase.from('workers').select('*')
+      let nq=supabase.from('notifications').select('*').order('created_at',{ascending:false}).limit(50)
+      if(!isGlobal&&admin.residence_id){
+        tq=tq.eq('residence_id',admin.residence_id)
+        wq=wq.eq('residence_id',admin.residence_id)
+        nq=nq.eq('residence_id',admin.residence_id)
+      }
+      const [{data:td},{data:wd},{data:nd}]=await Promise.all([tq,wq,nq])
+      // filter feedback to only tickets belonging to this residence
+      let fd=[]
+      if(td&&td.length>0){
+        const ids=td.map(t=>t.id)
+        const {data:fdData}=await supabase.from('feedback').select('*').in('ticket_id',ids)
+        fd=fdData||[]
+      }
+      if(td)setTickets(td);if(wd)setWorkers(wd);setFeedbacks(fd);if(nd)setNotifications(nd)
+      setLoading(false)
+    }
+    loadInitial()
     const tc=supabase.channel('db-tickets')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},p=>{
         setTickets(prev=>[p.new,...prev])
@@ -1191,17 +1215,19 @@ export default function Dashboard({chef,onLogout}){
         setTickets(prev=>prev.filter(t=>t.id!==p.old.id))
       })
       .subscribe()
+    const timers=timerRef.current
     const nc=supabase.channel('db-notifs')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},p=>{
         if(p.new.type==='new_ticket')setNotifications(prev=>prev.some(n=>n.tracking_code===p.new.tracking_code&&n.type==='new_ticket')?prev:[p.new,...prev])
       })
       .subscribe()
-    return()=>{supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timerRef.current).forEach(clearTimeout)}
-  },[fetchAll,addToast])
+    return()=>{
+      supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timers).forEach(clearTimeout)
+    }
+  },[addToast])
 
   useEffect(()=>{
     const h=e=>{
-      if(notifRef.current&&!notifRef.current.contains(e.target))setShowNotifs(false)
       if(exportRef.current&&!exportRef.current.contains(e.target))setShowExport(false)
     }
     document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)
@@ -1224,7 +1250,7 @@ export default function Dashboard({chef,onLogout}){
     await supabase.from('notifications').update({read_by_admin:true}).eq('read_by_admin',false)
     setNotifications(prev=>prev.map(n=>({...n,read_by_admin:true})))
   }
-  const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{}}
+  const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{/* ignore storage write errors */}}
 
   // ── NEW: handlers for new/edit/delete ──────────────────────────────────────
   const handleTicketCreated = (newTicket) => {
@@ -1253,26 +1279,90 @@ export default function Dashboard({chef,onLogout}){
   }
 
   const handlePrint=(data)=>{
-    const dir=txt.dir||'ltr'
-    const rows=data.map(t=>{
-      const ep=getEffectivePriority(t,settings)
-      return`<tr style="border-bottom:1px solid #e5e7eb">
-        <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:#1d4ed8">${t.tracking_code||''}</td>
-        <td style="padding:8px 10px"><strong>${t.nom||''}</strong><br/><span style="color:#9ca3af;font-size:9px">${t.chambre||''} · ${t.pavillon||''}</span></td>
-        <td style="padding:8px 10px;font-size:10px">${tf(t.location,lang,LM)}</td>
-        <td style="padding:8px 10px;font-size:10px">${tf(t.problem_type,lang,PM)}</td>
-        <td style="padding:8px 10px;font-size:9px">${txt.priorities[ep]||ep}</td>
-        <td style="padding:8px 10px;font-size:9px">${txt.statuses[t.statut]||t.statut}</td>
-        <td style="padding:8px 10px;font-size:9px">${new Date(t.created_at).toLocaleDateString()}</td>
-        <td style="padding:8px 10px;font-size:9px">${t.admin_note||''}</td>
-      </tr>`
-    }).join('')
-    const html=`<!DOCTYPE html><html dir="${dir}"><head><meta charset="UTF-8"/><title>Tickets</title>
-    <style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#111827}table{width:100%;border-collapse:collapse}thead tr{background:#1d4ed8}thead th{color:white;padding:8px 10px;text-align:left;font-size:10px}tbody tr:nth-child(even){background:#f9fafb}@media print{@page{size:A4 landscape;margin:12mm}}</style>
-    </head><body><h2 style="margin-bottom:12px">🔧 ${txt.title} — ${new Date().toLocaleDateString()}</h2>
-    <table><thead><tr><th>Code</th><th>${txt.student}</th><th>${txt.location}</th><th>${txt.type}</th><th>${txt.priority}</th><th>${txt.status}</th><th>${txt.date}</th><th>${txt.adminNote}</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <script>window.onload=()=>window.print()<\/script></body></html>`
+    const arStatuses={'En attente':'قيد الانتظار','En cours':'قيد المعالجة','Résolu':'تم الحل'}
+    const today=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/')
+    const residenceName=data.find(t=>t.residence)?.residence||data.find(t=>t.pavillon)?.pavillon||'—'
+    const rows=data.map((t,i)=>`<tr>
+      <td>${String(i+1).padStart(2,'0')}</td>
+      <td>${t.nom||''}</td>
+      <td>${new Date(t.created_at).toLocaleDateString('ar-DZ',{year:'numeric',month:'2-digit',day:'2-digit'})}</td>
+      <td>${t.problem_type||''}</td>
+      <td></td>
+      <td>${t.residence||t.pavillon||''}</td>
+      <td></td>
+      <td></td>
+      <td>${arStatuses[t.statut]||t.statut||''}</td>
+      <td style="font-size:8px">${t.admin_note||t.exact_location||''}</td>
+    </tr>`).join('')
+    const html=`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"/>
+    <title>سجل الشكاوى والطلبات</title>
+    <style>
+      @page{size:A4 landscape;margin:12mm}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Arial',sans-serif;font-size:11px;direction:rtl;color:#000;background:#fff}
+      .header{display:grid;grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:start;margin-bottom:12px}
+      .hright{text-align:right}
+      .hcenter{text-align:center;line-height:1.9}
+      .hleft{text-align:left}
+      .logo-box{border:1px solid #1a3a6b;border-radius:4px;padding:6px 10px;font-size:8.5px;line-height:1.5;color:#1a3a6b;font-weight:bold;display:inline-block;text-align:center}
+      .date-row{font-size:10.5px;margin-top:6px}
+      .res-label{font-size:11px}
+      .res-value{font-size:22px;font-weight:bold;border-bottom:2.5px solid #000;padding-bottom:2px;display:inline-block;margin-top:4px}
+      .doc-title{text-align:center;margin:14px 0}
+      .doc-title span{font-size:18px;font-weight:bold;color:#b00000;border:2px solid #b00000;padding:7px 44px;border-radius:4px;display:inline-block}
+      table{width:100%;border-collapse:collapse;margin-bottom:18px}
+      thead th{background:#1a3a6b;color:#fff;padding:7px 4px;text-align:center;border:1px solid #1a3a6b;font-size:9.5px;font-weight:bold}
+      tbody td{padding:5px 4px;text-align:center;border:1px solid #aaa;font-size:9px;vertical-align:middle}
+      tbody tr:nth-child(even){background:#f0f4f8}
+      .footer{display:grid;grid-template-columns:1fr 1fr;margin-top:16px;gap:20px}
+      .footer-right{text-align:right;font-size:11px;line-height:2.2}
+      .footer-left{text-align:left;font-size:11px}
+      .dots{margin-top:50px;color:#555;letter-spacing:2px}
+      @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body>
+    <div class="header">
+      <div class="hright">
+        <div class="logo-box">
+          الديوان الوطني للخدمات الجامعية<br/>
+          مديرية الخدمات الجامعية<br/>
+          باتنة &nbsp;–&nbsp; بوعقال
+        </div>
+        <div class="date-row">التاريخ: &nbsp;${today}</div>
+      </div>
+      <div class="hcenter">
+        <div>الجمهورية الجزائرية الديمقراطية الشعبية</div>
+        <div>وزارة التعليم العالي والبحث العلمي</div>
+        <div style="margin-top:6px">الديوان الوطني للخدمات الجامعية</div>
+        <div style="font-weight:bold;text-decoration:underline">مديرية الخدمات الجامعية باتنة &nbsp;–&nbsp; بوعقال</div>
+      </div>
+      <div class="hleft">
+        <div class="res-label">الإقامة الجامعية:</div>
+        <div class="res-value">${residenceName}</div>
+      </div>
+    </div>
+    <div class="doc-title"><span>سجل الشكاوى والطلبات</span></div>
+    <table>
+      <thead><tr>
+        <th>الرقم</th><th>اسم الطالب</th><th>تاريخ الإيداع</th><th>نوع الطلب</th>
+        <th>الصفة</th><th>الإقامة</th><th>الكلية</th><th>القسم</th>
+        <th>حالة الطلب</th><th>ملاحظات</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">
+      <div class="footer-right">
+        باتنة في: &nbsp;${today}<br/>
+        مدير الخدمات الجامعية<br/>
+        باتنة &nbsp;–&nbsp; بوعقال
+        <div class="dots">................................</div>
+      </div>
+      <div class="footer-left">
+        إمضاء المسؤول عن الإقامة:
+        <div class="dots">................................</div>
+      </div>
+    </div>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`
     const w=window.open('','_blank');w.document.write(html);w.document.close();setShowExport(false)
   }
 
@@ -1301,8 +1391,8 @@ export default function Dashboard({chef,onLogout}){
   },[processed,search,filters])
 
   const totalPages=Math.max(1,Math.ceil(filtered.length/settings.ticketsPerPage))
-  const paginated=filtered.slice((page-1)*settings.ticketsPerPage,page*settings.ticketsPerPage)
-  useEffect(()=>setPage(1),[search,filters])
+  const currentPage=Math.min(page,totalPages)
+  const paginated=filtered.slice((currentPage-1)*settings.ticketsPerPage,currentPage*settings.ticketsPerPage)
 
   const total=tickets.length,pend=tickets.filter(t=>t.statut==='En attente').length
   const inp=tickets.filter(t=>t.statut==='En cours').length,resN=tickets.filter(t=>t.statut==='Résolu').length
@@ -1317,9 +1407,9 @@ export default function Dashboard({chef,onLogout}){
     <Toast toasts={toasts} onDismiss={id=>{clearTimeout(timerRef.current[id]);setToasts(prev=>prev.filter(t=>t.id!==id))}}/>
 
     {/* Modals */}
-    {showNewTicket&&(<NewTicketModal txt={txt} lang={lang} workers={workers} onClose={()=>setShowNewTicket(false)} onCreated={handleTicketCreated} addToast={addToast}/>)}
+    {showNewTicket&&(<NewTicketModal txt={txt} lang={lang} workers={workers} onClose={()=>setShowNewTicket(false)} onCreated={handleTicketCreated} addToast={addToast} residenceId={admin.residence_id}/>)}
     {editTicket&&(<EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers} onClose={()=>setEditTicket(null)} onSaved={handleTicketSaved} onDeleted={handleTicketDeleted} addToast={addToast}/>)}
-    {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>)}
+    {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} isReadOnly={isReadOnly} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>)}
     {showSettings&&<SettingsPanel settings={settings} onSave={saveSettings} txt={txt} onClose={()=>setShowSettings(false)}/>}
     {selectedWorker&&<WorkerDrawer worker={selectedWorker} tickets={tickets} txt={txt} lang={lang} onClose={()=>setSelectedWorker(null)}/>}
 
@@ -1336,11 +1426,15 @@ export default function Dashboard({chef,onLogout}){
         <div className="px-4 py-3 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
-              {chef['Nom']?.[0]}{chef['Prénom']?.[0]}
+              {((lang==='ar'?admin.full_name_ar:admin.full_name)||admin.username||'?')[0]}
             </div>
             <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{chef['Nom']} {chef['Prénom']}</p>
-              <p className="text-slate-400 text-xs truncate">{txt.serviceManager}</p>
+              <p className="text-white text-xs font-semibold truncate">
+                {lang==='ar'?admin.full_name_ar:admin.full_name||admin.username}
+              </p>
+              <p className="text-slate-400 text-xs truncate">
+                {ROLE_LABELS[admin.role]?.[lang]||admin.role}
+              </p>
             </div>
           </div>
         </div>
@@ -1404,16 +1498,16 @@ export default function Dashboard({chef,onLogout}){
             {darkMode?'☀️':'🌙'}
           </button>
           <div className="flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>{l.label}</button>)}</div>
-          <button onClick={()=>setShowNewTicket(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+          {!isReadOnly&&<button onClick={()=>setShowNewTicket(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
             <span className="text-sm font-bold leading-none">+</span> {txt.newTicket}
-          </button>
+          </button>}
           <div className="relative" ref={exportRef}>
             <button onClick={()=>setShowExport(!showExport)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">📥 {txt.exportBtn}</button>
-            {showExport&&(<div className="absolute right-0 top-9 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-xl shadow-lg z-30 w-48 overflow-hidden">
-              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportAll}</button>
-              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportFiltered}</button>
-              <button onClick={()=>handlePrint(filtered)} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">🖨️ {txt.printFiltered||'Print filtered'}</button>
-              <button onClick={()=>handlePrint(tickets)} className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">🖨️ {txt.printAll||'Print all'}</button>
+            {showExport&&(<div className={`absolute top-9 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-xl shadow-lg z-30 w-48 overflow-hidden ${txt.dir==='rtl'?'left-0':'right-0'}`}>
+              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportAll}</button>
+              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportFiltered}</button>
+              <button onClick={()=>handlePrint(filtered)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">🖨️ {txt.printFiltered||'Print filtered'}</button>
+              <button onClick={()=>handlePrint(tickets)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">🖨️ {txt.printAll||'Print all'}</button>
             </div>)}
           </div>
         </div>
@@ -1448,7 +1542,7 @@ export default function Dashboard({chef,onLogout}){
 
         <div className="my-3">
           <input className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-500 shadow-sm"
-            placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>setSearch(e.target.value)}/>
+            placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1467,14 +1561,15 @@ export default function Dashboard({chef,onLogout}){
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-700">
                       <tr>
-                        {cols.code     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">Code</th>}
-                        {cols.student  &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.student}</th>}
-                        {cols.room     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.room}</th>}
-                        {cols.pavilion &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.filterPavillon}</th>}
-                        {cols.type     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.type}</th>}
-                        {cols.priority &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.priority}</th>}
-                        {cols.status   &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.status}</th>}
-                        {cols.date     &&<th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">{txt.date}</th>}
+                        {cols.code     &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">Code</th>}
+                        {cols.student  &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.student}</th>}
+                        {cols.residence&&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.residence}</th>}
+                        {cols.room     &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.room}</th>}
+                        {cols.pavilion &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.filterPavillon}</th>}
+                        {cols.type     &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.type}</th>}
+                        {cols.priority &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.priority}</th>}
+                        {cols.status   &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.status}</th>}
+                        {cols.date     &&<th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">{txt.date}</th>}
                         <th className="w-10"/>
                       </tr>
                     </thead>
@@ -1483,6 +1578,7 @@ export default function Dashboard({chef,onLogout}){
                         <tr key={t.id} className={`border-b dark:border-slate-800 hover:bg-blue-50/40 dark:hover:bg-slate-800/60 transition-colors ${PB[t.ep]}`}>
                           {cols.code    &&<td className="p-3 font-mono text-xs text-blue-500 whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{t.tracking_code}{t.escalated&&<span className="ml-1 text-orange-500" title={txt.escalated}>↑</span>}</td>}
                           {cols.student &&<td className="p-3 font-medium text-gray-700 dark:text-slate-200 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.nom}</td>}
+                          {cols.residence&&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer text-xs" onClick={()=>setSelTicket(t)}>{t.residence||'—'}</td>}
                           {cols.room    &&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
                           {cols.pavilion&&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
                           {cols.type    &&<td className="p-3 text-gray-600 dark:text-slate-300 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
@@ -1490,9 +1586,9 @@ export default function Dashboard({chef,onLogout}){
                           {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
                           {cols.date    &&<td className="p-3 text-gray-400 dark:text-slate-500 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
                           <td className="p-3">
-                            <button onClick={()=>setEditTicket(t)}
+                            {!isReadOnly&&<button onClick={()=>setEditTicket(t)}
                               className="p-1.5 rounded-lg text-gray-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                              title={lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}>✏️</button>
+                              title={lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}>✏️</button>}
                           </td>
                         </tr>
                       ))}
@@ -1501,14 +1597,14 @@ export default function Dashboard({chef,onLogout}){
                 </div>
                 {totalPages>1&&(
                   <div className="flex items-center justify-between px-4 py-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
-                    <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {page}/{totalPages}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {currentPage}/{totalPages}</span>
                     <div className="flex gap-1">
-                      <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">←</button>
+                      <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">←</button>
                       {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
-                        const pg=Math.min(Math.max(page-2+i,1),totalPages)
-                        return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border dark:border-slate-700 text-xs ${pg===page?'bg-blue-600 text-white border-blue-600':'hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400'}`}>{pg}</button>
+                        const pg=Math.min(Math.max(currentPage-2+i,1),totalPages)
+                        return<button key={pg} onClick={()=>setPage(pg)} className={`px-3 py-1 rounded-lg border dark:border-slate-700 text-xs ${pg===currentPage?'bg-blue-600 text-white border-blue-600':'hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400'}`}>{pg}</button>
                       })}
-                      <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">→</button>
+                      <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-3 py-1 rounded-lg border dark:border-slate-700 text-xs disabled:opacity-30 hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400">→</button>
                     </div>
                   </div>
                 )}
@@ -1528,34 +1624,36 @@ export default function Dashboard({chef,onLogout}){
               <h3 className="font-semibold text-gray-800 dark:text-slate-200">{lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'}</h3>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{workers.length} {lang==='ar'?'عامل':lang==='fr'?'ouvriers':'workers'}</p>
             </div>
-            <button onClick={()=>setShowSettings(true)}
+            {!isReadOnly&&<button onClick={()=>setShowSettings(true)}
               className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
               + {txt.addWorkerBtn}
-            </button>
+            </button>}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerName}</th>
-                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerFirst}</th>
-                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerMatricule}</th>
-                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerGrade}</th>
-                  <th className="text-left p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerJobTitle}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerName}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerFirst}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.residence}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerPhone}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerGrade}</th>
+                  <th className="ltr:text-left rtl:text-right p-3 text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide">{txt.addWorkerJobTitle}</th>
                 </tr>
               </thead>
               <tbody>
                 {workers.map((w,i)=>(
-                  <tr key={w['N°']||i} onClick={()=>setSelectedWorker(w)}
+                  <tr key={w['numero']||i} onClick={()=>setSelectedWorker(w)}
                     className="border-b dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
-                    <td className="p-3 font-medium text-gray-700 dark:text-slate-200">{w['Nom']}</td>
-                    <td className="p-3 text-gray-600 dark:text-slate-300">{w['Prénom']||'—'}</td>
-                    <td className="p-3 font-mono text-xs text-gray-500 dark:text-slate-400">{w['Matricule']||'—'}</td>
-                    <td className="p-3 text-gray-500 dark:text-slate-400">{w['Grade']||'—'}</td>
-                    <td className="p-3 text-gray-500 dark:text-slate-400 text-xs">{w['job title']||'—'}</td>
+                    <td className="p-3 font-medium text-gray-700 dark:text-slate-200">{w['nom']}</td>
+                    <td className="p-3 text-gray-600 dark:text-slate-300">{w['prenom']||'—'}</td>
+                    <td className="p-3 text-xs text-gray-500 dark:text-slate-400">{w['residence']||'—'}</td>
+                    <td className="p-3 text-xs text-gray-500 dark:text-slate-400">{w['phone']||'—'}</td>
+                    <td className="p-3 text-gray-500 dark:text-slate-400">{w['grade']||'—'}</td>
+                    <td className="p-3 text-gray-500 dark:text-slate-400 text-xs">{w['job_title']||'—'}</td>
                   </tr>
                 ))}
-                {workers.length===0&&<tr><td colSpan={5} className="p-8 text-center text-gray-400 dark:text-slate-500">{txt.noWorkers}</td></tr>}
+                {workers.length===0&&<tr><td colSpan={6} className="p-8 text-center text-gray-400 dark:text-slate-500">{txt.noWorkers}</td></tr>}
               </tbody>
             </table>
           </div>
