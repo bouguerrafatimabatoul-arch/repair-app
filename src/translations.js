@@ -1,7 +1,7 @@
 const translations = {
   en: {
     dir: 'ltr',
-    appTitle: 'University Residence',
+    appTitle: 'RESITECH',
     appSubtitle: 'Maintenance Request System',
     bacMatricule: 'Bac Registration Number',
     bacMatriculePlaceholder: 'e.g. 123456789',
@@ -41,7 +41,7 @@ const translations = {
     priority: 'Priority',
     priorities: { High: 'High', Medium: 'Medium', Low: 'Low' },
     priorityAuto: 'Auto-assigned',
-    priorityHighNote: '⚡ High priority — night shift available if needed',
+    priorityHighNote: 'High priority — night shift available if needed',
 
     description: 'Description',
     descriptionPlaceholder: 'Describe the problem clearly...',
@@ -52,7 +52,7 @@ const translations = {
 
     availability: 'Preferred time for repair visit',
     availabilityNote: 'Select an available time slot (8am–5pm)',
-    nightShift: '🌙 Night Shift (Emergency only)',
+    nightShift: 'Night Shift (Emergency only)',
 
     fillAll: 'Please fill in all required fields.',
     fillExactLocation: 'Please specify the exact location.',
@@ -97,7 +97,7 @@ const translations = {
 
   fr: {
     dir: 'ltr',
-    appTitle: 'Résidence Universitaire',
+    appTitle: 'RESITECH',
     appSubtitle: 'Système de demandes de réparation',
     bacMatricule: 'Matricule de Bac',
     bacMatriculePlaceholder: 'Ex: 123456789',
@@ -136,7 +136,7 @@ const translations = {
     priority: 'Priorité',
     priorities: { High: 'Haute', Medium: 'Moyenne', Low: 'Faible' },
     priorityAuto: 'Assignée automatiquement',
-    priorityHighNote: '⚡ Haute priorité — équipe de nuit disponible si nécessaire',
+    priorityHighNote: 'Haute priorité — équipe de nuit disponible si nécessaire',
 
     description: 'Description',
     descriptionPlaceholder: 'Décrivez le problème clairement...',
@@ -147,7 +147,7 @@ const translations = {
 
     availability: 'Heure souhaitée pour la visite',
     availabilityNote: 'Sélectionnez un créneau (8h–17h)',
-    nightShift: '🌙 Équipe de nuit (Urgence uniquement)',
+    nightShift: 'Équipe de nuit (Urgence uniquement)',
 
     fillAll: 'Veuillez remplir tous les champs obligatoires.',
     fillExactLocation: "Veuillez préciser l'emplacement exact.",
@@ -192,7 +192,7 @@ const translations = {
 
   ar: {
     dir: 'rtl',
-    appTitle: 'الإقامة الجامعية',
+    appTitle: 'RESITECH',
     appSubtitle: 'نظام طلبات الصيانة',
     bacMatricule: 'رقم تسجيل الباكالوريا',
     bacMatriculePlaceholder: 'مثال: 123456789',
@@ -231,7 +231,7 @@ const translations = {
     priority: 'الأولوية',
     priorities: { High: 'عالية', Medium: 'متوسطة', Low: 'منخفضة' },
     priorityAuto: 'تُحدد تلقائياً',
-    priorityHighNote: '⚡ أولوية عالية — الوردية الليلية متاحة عند الضرورة',
+    priorityHighNote: 'أولوية عالية — الوردية الليلية متاحة عند الضرورة',
 
     description: 'الوصف',
     descriptionPlaceholder: 'اشرح المشكلة بوضوح...',
@@ -242,7 +242,7 @@ const translations = {
 
     availability: 'الوقت المفضل للزيارة',
     availabilityNote: 'اختر موعداً (8ص–5م)',
-    nightShift: '🌙 الوردية الليلية (للحالات الطارئة فقط)',
+    nightShift: 'الوردية الليلية (للحالات الطارئة فقط)',
 
     fillAll: 'يرجى ملء جميع الحقول المطلوبة.',
     fillExactLocation: 'يرجى تحديد الموقع الدقيق.',

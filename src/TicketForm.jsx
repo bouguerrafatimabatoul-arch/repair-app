@@ -188,7 +188,7 @@ function Header({ t, student, lang, setLang, notifications, showNotifs, setShowN
           ))}
         </div>
 
-        <div className="relative" ref={notifRef}>
+        <div ref={notifRef}>
           <button
             onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markNotifsRead() }}
             className="relative p-1.5 rounded-lg transition-all"
@@ -201,51 +201,6 @@ function Header({ t, student, lang, setLang, notifications, showNotifs, setShowN
               </span>
             )}
           </button>
-
-          {showNotifs && (
-            <div className="absolute right-0 top-9 w-72 rounded-xl z-30 overflow-hidden"
-              style={{background:'rgba(10,14,23,0.98)',backdropFilter:'blur(20px)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
-              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-                <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
-                  🔔 {lang === 'ar' ? 'الإشعارات' : lang === 'fr' ? 'Notifications' : 'Notifications'}
-                </span>
-                {notifications.length > 0 && (
-                  <button onClick={markNotifsRead} className="text-xs transition-colors" style={{color:'#60a5fa'}}>
-                    {lang === 'ar' ? 'تحديد كمقروء' : lang === 'fr' ? 'Tout lire' : 'Mark all read'}
-                  </button>
-                )}
-              </div>
-              <div className="max-h-64 overflow-y-auto divide-y" style={{borderColor:'rgba(255,255,255,0.04)'}}>
-                {notifications.length === 0 ? (
-                  <p className="text-center text-sm py-6" style={{color:'rgba(255,255,255,0.3)'}}>
-                    {lang === 'ar' ? 'لا توجد إشعارات' : lang === 'fr' ? 'Aucune notification' : 'No notifications yet'}
-                  </p>
-                ) : notifications.map((n, i) => (
-                  <div key={n.id || i}
-                    className="px-4 py-3 text-sm"
-                    style={{background:!n.read_by_student?'rgba(59,130,246,0.05)':'transparent'}}>
-                    <div className="flex items-start gap-2">
-                      {!n.read_by_student && (
-                        <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#60a5fa'}} />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-snug" style={{color:'rgba(255,255,255,0.7)'}}>
-                          {n.message_student || (
-                            lang === 'ar' ? `تم تحديث حالة طلبك ${n.tracking_code}`
-                            : lang === 'fr' ? `Votre demande ${n.tracking_code} a été mise à jour`
-                            : `Your request ${n.tracking_code} was updated`
-                          )}
-                        </p>
-                        <p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.25)'}}>
-                          {new Date(n.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <button onClick={onLogout} className="text-xs transition-colors" style={{color:'#f87171'}}>{t.logout}</button>
@@ -258,15 +213,15 @@ function BottomNav({ t, view, onTabChange }) {
   return (
     <div className="fixed bottom-0 left-0 right-0 flex z-10" style={{background:'rgba(8,11,18,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(255,255,255,0.07)'}}>
       {[
-        { id: 'form',    icon: '✏️', label: t.newRequest },
-        { id: 'tickets', icon: '📋', label: t.myTickets },
-        { id: 'track',   icon: '🔍', label: t.trackNav },
+        { id: 'form',    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>, label: t.newRequest },
+        { id: 'tickets', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, label: t.myTickets },
+        { id: 'track',   icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>, label: t.trackNav },
       ].map(tab => (
         <button key={tab.id} onClick={() => onTabChange(tab.id)}
           className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-0.5 transition-all"
           style={{color: view === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.3)',
                   borderTop: view === tab.id ? '2px solid #3b82f6' : '2px solid transparent'}}>
-          <span style={{ fontSize: 16 }}>{tab.icon}</span>
+          <span className="w-4 h-4 [&_svg]:w-full [&_svg]:h-full">{tab.icon}</span>
           {tab.label}
         </button>
       ))}
@@ -606,9 +561,53 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     )
   }
 
+  const notifPanel = showNotifs && (
+    <div ref={notifRef} className="fixed top-16 right-4 w-72 rounded-xl z-50 overflow-hidden"
+      style={{background:'#0d1117',border:'1px solid rgba(255,255,255,0.1)',boxShadow:'0 16px 48px rgba(0,0,0,0.7)'}}>
+      <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+        <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
+          🔔 {lang==='ar'?'الإشعارات':lang==='fr'?'Notifications':'Notifications'}
+        </span>
+        {notifications.length>0&&(
+          <button onClick={markNotifsRead} className="text-xs" style={{color:'#60a5fa'}}>
+            {lang==='ar'?'تحديد كمقروء':lang==='fr'?'Tout lire':'Mark all read'}
+          </button>
+        )}
+      </div>
+      <div className="max-h-72 overflow-y-auto">
+        {notifications.length===0
+          ? <p className="text-center text-sm py-6" style={{color:'rgba(255,255,255,0.3)'}}>
+              {lang==='ar'?'لا توجد إشعارات':lang==='fr'?'Aucune notification':'No notifications yet'}
+            </p>
+          : notifications.map((n,i)=>(
+            <div key={n.id||i} className="px-4 py-3"
+              style={{background:!n.read_by_student?'rgba(59,130,246,0.06)':'transparent',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+              <div className="flex items-start gap-2">
+                {!n.read_by_student&&<span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#60a5fa'}}/>}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium leading-snug" style={{color:'#e2e8f0'}}>
+                    {n.message_student||(
+                      lang==='ar'?`تم تحديث حالة طلبك ${n.tracking_code}`
+                      :lang==='fr'?`Votre demande ${n.tracking_code} a été mise à jour`
+                      :`Your request ${n.tracking_code} was updated`
+                    )}
+                  </p>
+                  <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.35)'}}>
+                    {new Date(n.created_at).toLocaleString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  )
+
   if (view === 'track') {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
+        {notifPanel}
         <div className="max-w-lg mx-auto p-4">
           <Header
             t={t}
@@ -670,7 +669,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                   )}
                   <p>📅 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.dateLabel}:</span> {new Date(trackedTicket.created_at).toLocaleDateString()}</p>
                   {trackedTicket.resolved_at && (
-                    <p style={{color:'#34d399'}}>✅ <span className="font-medium">
+                    <p style={{color:'#34d399'}}><span className="font-medium">
                       {lang === 'ar' ? 'تاريخ الحل' : lang === 'fr' ? 'Résolu le' : 'Resolved'}:
                     </span> {new Date(trackedTicket.resolved_at).toLocaleString()}</p>
                   )}
@@ -711,6 +710,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   if (view === 'tickets') {
     return (
       <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
+        {notifPanel}
         <div className="max-w-lg mx-auto p-4">
           <Header
             t={t}
@@ -758,6 +758,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   return (
     <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
+      {notifPanel}
       <div className="max-w-lg mx-auto p-4">
         <Header
           t={t}
@@ -919,7 +920,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             <button onClick={() => fileRef.current.click()}
               className="w-full border-2 border-dashed rounded-xl p-4 text-sm transition-all hover:border-blue-500/30"
               style={{borderColor:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.02)'}}>
-              {imageFile ? `✅ ${t.imageSelected}: ${imageFile.name}` : `📷 ${t.imageBtn}`}
+              {imageFile ? `${t.imageSelected}: ${imageFile.name}` : t.imageBtn}
             </button>
             <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.2)'}}>
               {lang === 'ar' ? 'JPG، PNG، WEBP — بحد أقصى 5 ميغابايت' : lang === 'fr' ? 'JPG, PNG, WEBP — max 5 Mo' : 'JPG, PNG, WEBP — max 5 MB'}

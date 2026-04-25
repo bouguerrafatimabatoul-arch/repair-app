@@ -4,6 +4,38 @@ import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'
 import { PM, LM, ALL_PROBLEM_TYPES, ALL_LOCATIONS, tf } from './constants'
 import { generateTrackingCode, assignPriority } from './utils'
 
+// ─── SVG icons (no emoji) ─────────────────────────────────────────────────────
+const IC = {
+  tickets:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+  analytics: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  workers:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  bell:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  mail:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  settings:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>,
+  reports:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>,
+  logout:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  wrench:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+  sun:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+  moon:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+  pin:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  clock:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  camera:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+  user:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  home:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  phone:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.47 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.4a16 16 0 0 0 5.69 5.69l.9-.9a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+  download:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  printer:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+  search:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  inbox:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
+  send:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  note:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  star:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  alert:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  check:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  gear:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  night:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+}
+
 // ─── Priority escalation ───────────────────────────────────────────────────────
 function getEffectivePriority(ticket, settings) {
   if (ticket.statut === 'Résolu') return ticket.priorite
@@ -59,6 +91,20 @@ const T = {
     editTicketTitle:'Edit Ticket',editTicketSave:'Save changes',editTicketCancel:'Cancel',
     editTicketSuccess:'Ticket updated!',editTicketError:'Error updating ticket.',
     editTicketDelete:'Delete ticket',editTicketDeleteConfirm:'Are you sure you want to delete this ticket? This action cannot be undone.',
+    messages:'Messages',compose:'Compose',inbox:'Inbox',sent:'Sent',noMessages:'No messages',
+    msgFrom:'From',msgTo:'To',sending:'Sending…',selectRecipient:'Select recipient',msgErrorEmpty:'Please fill in all fields.',
+    addWorkerDob:'Date of birth *',addWorkerCredentials:'Generated credentials',
+    addWorkerUsernameLabel:'Username',addWorkerPasswordLabel:'Password (date of birth)',
+    addWorkerCredNote:"Note these credentials — they won't be shown again",
+    addWorkerUserLabel:'Username:',addWorkerPassLabel:'Password:',addWorkerCredSub:'Login credentials generated automatically',
+    close:'Close',
+    nightShiftTonight:'Night shift — tonight',nightShiftAccess:'Access 17:00 → 08:00',
+    noAccount:'No account',createAccount:'Create account',generate:'Generate',
+    assignNight:'+ Assign',assignedNight:'Assigned',
+    reports:'Reports',nightShiftReport:'Night Shift Reports',nightShiftShifts:'shift(s)',
+    nightShiftTeam:'Assigned Team',nightShiftNoTickets:'No tickets during this shift',
+    nightShiftResolved:'resolved',nightShiftCreated:'created',nightShiftWorkers:'worker(s)',
+    nightShiftNone:'No night shift reports yet',
   },
   fr:{dir:'ltr',title:'Tableau de bord',serviceManager:'Chef de service',
     total:'Total',pending:'En attente',inProgress:'En cours',resolved:'Résolus',urgent:'Urgents',
@@ -99,6 +145,20 @@ const T = {
     editTicketTitle:'Modifier le ticket',editTicketSave:'Enregistrer',editTicketCancel:'Annuler',
     editTicketSuccess:'Ticket mis à jour !',editTicketError:'Erreur lors de la mise à jour.',
     editTicketDelete:'Supprimer',editTicketDeleteConfirm:'Êtes-vous sûr de vouloir supprimer ce ticket ? Cette action est irréversible.',
+    messages:'Messages',compose:'Nouveau message',inbox:'Boîte de réception',sent:'Envoyés',noMessages:'Aucun message',
+    msgFrom:'De',msgTo:'À',sending:'Envoi…',selectRecipient:'Sélectionner un destinataire',msgErrorEmpty:'Veuillez remplir tous les champs.',
+    addWorkerDob:'Date de naissance *',addWorkerCredentials:'Identifiants générés',
+    addWorkerUsernameLabel:"Nom d'utilisateur",addWorkerPasswordLabel:'Mot de passe (date de naissance)',
+    addWorkerCredNote:'Notez ces identifiants — ils ne seront plus affichés',
+    addWorkerUserLabel:'Utilisateur :',addWorkerPassLabel:'Mot de passe :',addWorkerCredSub:'Identifiants de connexion générés automatiquement',
+    close:'Fermer',
+    nightShiftTonight:'Équipe de nuit — ce soir',nightShiftAccess:'Accès 17h00 → 08h00',
+    noAccount:'Aucun compte',createAccount:'Créer compte',generate:'Générer',
+    assignNight:'+ Assigner',assignedNight:'Assigné',
+    reports:'Rapports',nightShiftReport:'Rapports de nuit',nightShiftShifts:'quart(s) de nuit',
+    nightShiftTeam:'Équipe assignée',nightShiftNoTickets:'Aucun ticket pendant cette période',
+    nightShiftResolved:'résolus',nightShiftCreated:'créés',nightShiftWorkers:'ouvrier(s)',
+    nightShiftNone:"Aucun rapport de nuit pour l'instant",
   },
   ar:{dir:'rtl',title:'لوحة التحكم',serviceManager:'رئيس المصلحة',
     total:'المجموع',pending:'قيد الانتظار',inProgress:'جارٍ',resolved:'تم الحل',urgent:'عاجل',
@@ -139,6 +199,20 @@ const T = {
     editTicketTitle:'تعديل الطلب',editTicketSave:'حفظ التعديلات',editTicketCancel:'إلغاء',
     editTicketSuccess:'تم تحديث الطلب!',editTicketError:'خطأ في التحديث.',
     editTicketDelete:'حذف الطلب',editTicketDeleteConfirm:'هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.',
+    messages:'الرسائل',compose:'رسالة جديدة',inbox:'صندوق الوارد',sent:'المُرسَل',noMessages:'لا توجد رسائل',
+    msgFrom:'من',msgTo:'إلى',sending:'جارٍ الإرسال…',selectRecipient:'اختر المستلم',msgErrorEmpty:'يرجى ملء جميع الحقول.',
+    addWorkerDob:'تاريخ الميلاد *',addWorkerCredentials:'بيانات الدخول المُولَّدة',
+    addWorkerUsernameLabel:'اسم المستخدم',addWorkerPasswordLabel:'كلمة المرور (تاريخ الميلاد)',
+    addWorkerCredNote:'احتفظ ببيانات الدخول — لن تُعرض مجدداً',
+    addWorkerUserLabel:'المستخدم:',addWorkerPassLabel:'كلمة المرور:',addWorkerCredSub:'تم توليد بيانات الدخول تلقائياً',
+    close:'إغلاق',
+    nightShiftTonight:'فريق الليل — الليلة',nightShiftAccess:'وصول 17:00 → 08:00',
+    noAccount:'لا يوجد حساب',createAccount:'إنشاء حساب',generate:'توليد',
+    assignNight:'+ تعيين',assignedNight:'معيَّن',
+    reports:'تقارير',nightShiftReport:'تقارير المناوبة الليلية',nightShiftShifts:'مناوبة',
+    nightShiftTeam:'الفريق المعيَّن',nightShiftNoTickets:'لا توجد طلبات خلال هذه الفترة',
+    nightShiftResolved:'تم حلها',nightShiftCreated:'مُضافة',nightShiftWorkers:'عامل/عمال',
+    nightShiftNone:'لا توجد تقارير ليلية بعد',
   },
 }
 
@@ -233,7 +307,7 @@ function WorkerPicker({workers,selected,onChange,txt}){
     document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)
   },[])
   const toggle=id=>onChange(selected.includes(id)?selected.filter(x=>x!==id):[...selected,id])
-  const names=workers.filter(w=>selected.includes(w['numero'])).map(w=>`${w['nom']} ${w['prenom']||''}`.trim())
+  const names=workers.filter(w=>selected.includes(w['id'])).map(w=>`${w['nom']} ${w['prenom']||''}`.trim())
   return(
     <div className="relative" ref={ref}>
       <button onClick={()=>setOpen(!open)}
@@ -248,7 +322,7 @@ function WorkerPicker({workers,selected,onChange,txt}){
           {workers.length===0
             ?<p className="text-xs text-gray-400 p-3">{txt.noWorkers}</p>
             :workers.map(w=>{
-              const id=w['numero'],name=`${w['nom']} ${w['prenom']||''}`.trim()
+              const id=w['id'],name=`${w['nom']} ${w['prenom']||''}`.trim()
               const role=w['job_title']||''
               const sel=selected.includes(id)
               return(
@@ -324,9 +398,9 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast, resi
   const labelCls = "block text-xs font-medium text-gray-500 mb-1"
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{background:'rgba(0,0,0,0.5)'}}
       onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
           <div className="flex items-center gap-3">
@@ -510,9 +584,9 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
   const labelCls = "block text-xs font-medium text-gray-500 mb-1"
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{background:'rgba(0,0,0,0.5)'}}
       onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
           <div>
@@ -657,9 +731,9 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
   const escalated=ep!==ticket.priorite
   const handleSave=async()=>{setSaving(true);await onSave(ticket.id,note,JSON.stringify(sel),tools);setSaving(false)}
   return(
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{background:'rgba(0,0,0,0.45)'}}
       onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" dir={txt.dir}>
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-start rounded-t-2xl z-10">
           <div>
             <p className="font-mono text-sm font-bold text-blue-600">{ticket.tracking_code}</p>
@@ -686,18 +760,18 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
             <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-400 mb-1">{txt.submittedOn}</p><p className="font-medium text-gray-700 text-xs">{new Date(ticket.created_at).toLocaleString()}</p></div>
             {ticket.resolved_at&&<div className="bg-green-50 rounded-xl p-3"><p className="text-xs text-green-400 mb-1">{txt.resolvedOn}</p><p className="font-medium text-green-700 text-xs">{new Date(ticket.resolved_at).toLocaleString()}</p></div>}
           </div>
-          {ticket.exact_location&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">📍 {txt.exactLocation}</p><p className="text-sm text-blue-700">{ticket.exact_location}</p></div>}
-          <div><p className="text-xs text-gray-400 mb-1 font-medium">📝 {txt.description}</p><p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 leading-relaxed">{ticket.description}</p></div>
-          {ticket.availability&&<p className="text-sm text-gray-600">🕐 <span className="font-medium">{txt.availability}:</span> {ticket.availability}</p>}
-          {ticket.image_url&&<div><p className="text-xs text-gray-400 mb-1 font-medium">📷 {txt.image}</p><img src={ticket.image_url} alt="ticket" className="w-full rounded-xl max-h-48 object-cover" onError={e=>e.target.style.display='none'}/></div>}
-          {fb&&<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"><p className="text-xs font-medium text-yellow-700 mb-1">⭐ {txt.feedback}</p><p className="text-yellow-500 text-xl">{'★'.repeat(fb.rating)}{'☆'.repeat(5-fb.rating)}</p>{fb.note&&<p className="text-xs text-gray-600 mt-1 italic">"{fb.note}"</p>}</div>}
-          {!isReadOnly&&<div><label className="block text-xs font-medium text-gray-500 mb-1.5">👷 {txt.assignWorkers}</label><WorkerPicker workers={workers} selected={sel} onChange={setSel} txt={txt}/></div>}
+          {ticket.exact_location&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">{txt.exactLocation}</p><p className="text-sm text-blue-700">{ticket.exact_location}</p></div>}
+          <div><p className="text-xs text-gray-400 mb-1 font-medium">{txt.description}</p><p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 leading-relaxed">{ticket.description}</p></div>
+          {ticket.availability&&<p className="text-sm text-gray-600"><span className="font-medium">{txt.availability}:</span> {ticket.availability}</p>}
+          {ticket.image_url&&<div><p className="text-xs text-gray-400 mb-1 font-medium">{txt.image}</p><img src={ticket.image_url} alt="ticket" className="w-full rounded-xl max-h-48 object-cover" onError={e=>e.target.style.display='none'}/></div>}
+          {fb&&<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"><p className="text-xs font-medium text-yellow-700 mb-1">{txt.feedback}</p><p className="text-yellow-500 text-xl">{'★'.repeat(fb.rating)}{'☆'.repeat(5-fb.rating)}</p>{fb.note&&<p className="text-xs text-gray-600 mt-1 italic">"{fb.note}"</p>}</div>}
+          {!isReadOnly&&<div><label className="block text-xs font-medium text-gray-500 mb-1.5">{txt.assignWorkers}</label><WorkerPicker workers={workers} selected={sel} onChange={setSel} txt={txt}/></div>}
           {!isReadOnly&&<div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">📋 {txt.adminNote}</label>
             <textarea className="w-full border border-gray-200 rounded-xl p-3 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder={txt.adminNotePlaceholder} value={note} onChange={e=>setNote(e.target.value)}/>
             <button onClick={handleSave} disabled={saving} className="w-full mt-1.5 bg-gray-800 text-white py-2.5 rounded-xl text-sm hover:bg-gray-900 disabled:opacity-50 font-medium">{saving?'…':txt.saveNote}</button>
           </div>}
-          {ticket.admin_note&&isReadOnly&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">📋 {txt.adminNote}</p><p className="text-sm text-blue-700">{ticket.admin_note}</p></div>}
+          {ticket.admin_note&&isReadOnly&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">{txt.adminNote}</p><p className="text-sm text-blue-700">{ticket.admin_note}</p></div>}
           {!isReadOnly&&<div>
             <p className="text-xs font-medium text-gray-500 mb-2">🔄 {txt.changeStatus}</p>
             <div className="flex gap-2">
@@ -716,119 +790,201 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
 }
 
 // ─── Settings panel ────────────────────────────────────────────────────────────
-function SettingsPanel({settings,onSave,txt,onClose}){
-  const [d,setD]=useState(settings)
-  const [saved,setSaved]=useState(false)
-  const [newWorker,setNewWorker]=useState({nom:'',prenom:'',phone:'',grade:'',jobTitle:''})
-  const [workerMsg,setWorkerMsg]=useState('')
-  const [addingWorker,setAddingWorker]=useState(false)
-  const save=()=>{onSave(d);setSaved(true);setTimeout(()=>setSaved(false),2000)}
-  const colLabels={code:'Code',student:txt.student,residence:txt.residence,room:txt.room,pavilion:txt.filterPavillon,type:txt.type,priority:txt.priority,status:txt.status,date:txt.date}
+function normalizeForUsername(s) {
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')
+}
 
-  const handleAddWorker=async()=>{
-    if(!newWorker.nom.trim()||!newWorker.prenom.trim()){setWorkerMsg('⚠️ Name and first name required');return}
-    setAddingWorker(true)
-    const insertData={nom:newWorker.nom.trim(),prenom:newWorker.prenom.trim(),grade:newWorker.grade.trim()||'عامل صيانة',job_title:newWorker.jobTitle.trim()||'عامل صيانة'}
-    if(newWorker.phone) insertData['phone']=newWorker.phone.trim()
-    const {error}=await supabase.from('workers').insert([insertData])
-    setAddingWorker(false)
-    if(error){setWorkerMsg('❌ '+error.message);return}
-    setWorkerMsg('✅ '+txt.addWorkerSaved)
-    setNewWorker({nom:'',prenom:'',phone:'',grade:'',jobTitle:''})
-    setTimeout(()=>setWorkerMsg(''),3000)
+function AddWorkerModal({ txt, lang, admin, residenceName, onClose, onAdded }) {
+  const [form, setForm] = useState({ nom:'', prenom:'', phone:'', grade:'', jobTitle:'', dob:'' })
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+  const [credentials, setCredentials] = useState(null)
+  const set = (k,v) => setForm(f=>({...f,[k]:v}))
+  const ic = 'w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800'
+  const lc = 'block text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-1.5'
+
+  const handleAdd = async () => {
+    setError('')
+    if (!form.nom.trim()||!form.prenom.trim()) {
+      setError(lang==='ar'?'الاسم واللقب مطلوبان':lang==='fr'?'Nom et prénom requis':'Name and first name required')
+      return
+    }
+    if (!form.dob) {
+      setError(lang==='ar'?'تاريخ الميلاد مطلوب':lang==='fr'?'Date de naissance requise':'Date of birth required')
+      return
+    }
+    setAdding(true)
+    const res = residenceName || ''
+    const username = `${normalizeForUsername(res)}_${normalizeForUsername(form.nom)}_${normalizeForUsername(form.prenom)}`
+    const [y,m,d] = form.dob.split('-')
+    const password = `${d}${m}${y}`
+    const ins = {
+      nom: form.nom.trim(), prenom: form.prenom.trim(),
+      grade: form.grade.trim()||'عامل صيانة', job_title: form.jobTitle.trim()||'عامل صيانة',
+      date_of_birth: form.dob, username, password,
+      residence_id: admin.residence_id, residence: res,
+    }
+    if (form.phone) ins.phone = form.phone.trim()
+    const { error:err } = await supabase.from('workers').insert([ins])
+    setAdding(false)
+    if (err) { setError(err.message); return }
+    setCredentials({ username, password })
+    onAdded()
   }
-  return(
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}
-      onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" dir={txt.dir}>
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-2xl">
-          <h2 className="font-semibold text-gray-800">⚙️ {txt.settingsTitle}</h2>
-          <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl">✕</button>
-        </div>
-        <div className="px-6 py-5 space-y-7">
+
+  if (credentials) return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm border border-gray-100 dark:border-slate-800">
+        <div className="p-6 text-center space-y-4">
+          <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-2xl mx-auto">✓</div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">🔺 {txt.escalationTitle}</h3>
-            <p className="text-xs text-gray-400 mb-4">Unresolved tickets automatically get higher priority over time.</p>
-            {[
-              {key:'escalateLowToMedium',label:txt.escalateLowLabel,min:6,max:168},
-              {key:'escalateMediumToHigh',label:txt.escalateMediumLabel,min:6,max:168},
-            ].map(f=>(
-              <div key={f.key} className="mb-4">
-                <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
-                <div className="flex items-center gap-3">
-                  <input type="range" min={f.min} max={f.max} step="6" value={d[f.key]}
-                    onChange={e=>setD(x=>({...x,[f.key]:+e.target.value}))} className="flex-1"/>
-                  <span className="text-sm font-semibold text-gray-700 w-10 text-right">{d[f.key]}h</span>
-                </div>
-              </div>
-            ))}
+            <p className="font-semibold text-gray-800 dark:text-slate-200 mb-0.5">{txt.addWorkerSaved}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">{txt.addWorkerCredSub}</p>
           </div>
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3 text-left">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">{txt.addWorkerUsernameLabel}</p>
+              <p className="font-mono text-sm font-semibold text-gray-800 dark:text-slate-200 select-all">{credentials.username}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">{txt.addWorkerPasswordLabel}</p>
+              <p className="font-mono text-sm font-semibold text-gray-800 dark:text-slate-200 select-all">{credentials.password}</p>
+            </div>
+          </div>
+          <p className="text-xs text-amber-600 dark:text-amber-400">{txt.addWorkerCredNote}</p>
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+            {txt.close}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+          <h2 className="font-semibold text-gray-800 dark:text-slate-200 text-base">👷 {txt.addWorkerTitle}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 text-2xl leading-none">×</button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={lc}>{txt.addWorkerName} *</label><input className={ic} value={form.nom} onChange={e=>set('nom',e.target.value)} placeholder="BOUGUERRA"/></div>
+            <div><label className={lc}>{txt.addWorkerFirst} *</label><input className={ic} value={form.prenom} onChange={e=>set('prenom',e.target.value)} placeholder="Ahmed"/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={lc}>{txt.addWorkerPhone}</label><input type="tel" className={ic} value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="0550 123 456"/></div>
+            <div><label className={lc}>{txt.addWorkerGrade}</label><input className={ic} value={form.grade} onChange={e=>set('grade',e.target.value)} placeholder="Technicien"/></div>
+          </div>
+          <div><label className={lc}>{txt.addWorkerJobTitle}</label><input className={ic} value={form.jobTitle} onChange={e=>set('jobTitle',e.target.value)} placeholder="عامل صيانة"/></div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 {txt.ticketsPerPageLabel}</h3>
+            <label className={lc}>{txt.addWorkerDob}</label>
+            <input type="date" className={ic} value={form.dob} onChange={e=>set('dob',e.target.value)} max={new Date().toISOString().split('T')[0]}/>
+          </div>
+          {form.nom&&form.prenom&&form.dob&&(
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 space-y-1">
+              <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1.5">{txt.addWorkerCredentials}</p>
+              <p className="text-xs text-gray-600 dark:text-slate-300">
+                <span className="text-gray-400">{txt.addWorkerUserLabel} </span>
+                <span className="font-mono">{normalizeForUsername(residenceName||'')}_{normalizeForUsername(form.nom)}_{normalizeForUsername(form.prenom)}</span>
+              </p>
+              <p className="text-xs text-gray-600 dark:text-slate-300">
+                <span className="text-gray-400">{txt.addWorkerPassLabel} </span>
+                <span className="font-mono">{(()=>{const[y,m,d]=form.dob.split('-');return`${d}${m}${y}`})()}</span>
+              </p>
+            </div>
+          )}
+          {error&&<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800">
+              {lang==='ar'?'إلغاء':lang==='fr'?'Annuler':'Cancel'}
+            </button>
+            <button onClick={handleAdd} disabled={adding} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              {adding?'…':txt.addWorkerBtn}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SettingsView({ settings, onSave, txt, lang }) {
+  const [d, setD] = useState(settings)
+  const [saved, setSaved] = useState(false)
+  const save = () => { onSave(d); setSaved(true); setTimeout(()=>setSaved(false), 2000) }
+  const colLabels = { code:'Code', student:txt.student, residence:txt.residence, room:txt.room, pavilion:txt.filterPavillon, type:txt.type, priority:txt.priority, status:txt.status, date:txt.date }
+  const card = 'bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden'
+  const head = 'px-5 py-4 border-b border-gray-100 dark:border-slate-800'
+  return (
+    <div className="max-w-2xl mx-auto space-y-4">
+      <div className={card}>
+        <div className={head}>
+          <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm">{lang==='ar'?'العرض':lang==='fr'?'Affichage':'Display'}</p>
+        </div>
+        <div className="p-5 space-y-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-2">{txt.ticketsPerPageLabel}</p>
             <div className="flex gap-2">
               {[10,25,50,100].map(n=>(
                 <button key={n} onClick={()=>setD(x=>({...x,ticketsPerPage:n}))}
-                  className={`flex-1 py-2 rounded-xl text-sm border transition-colors ${d.ticketsPerPage===n?'bg-blue-600 text-white border-blue-600':'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{n}</button>
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${d.ticketsPerPage===n?'bg-blue-600 text-white border-blue-600 shadow-sm':'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+                  {n}
+                </button>
               ))}
             </div>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">👁 {txt.tableColsTitle}</h3>
-            <div className="grid grid-cols-2 gap-1">
-              {Object.entries(colLabels).map(([k,l])=>(
-                <label key={k} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
-                  <input type="checkbox" checked={d.visibleCols[k]!==false}
-                    onChange={e=>setD(x=>({...x,visibleCols:{...x.visibleCols,[k]:e.target.checked}}))} className="accent-blue-600"/>
-                  <span className="text-sm text-gray-700">{l}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <button onClick={save}
-            className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${saved?'bg-green-600 text-white':'bg-blue-600 text-white hover:bg-blue-700'}`}>
-            {saved?`✓ ${txt.saved}`:txt.save}
-          </button>
-          <div className="border-t pt-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">👷 {txt.addWorkerTitle}</h3>
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerName} *</label>
-                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.nom} onChange={e=>setNewWorker(x=>({...x,nom:e.target.value}))} placeholder="BOUGUERRA"/>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerFirst} *</label>
-                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.prenom} onChange={e=>setNewWorker(x=>({...x,prenom:e.target.value}))} placeholder="Ahmed"/>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerPhone}</label>
-                  <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.phone} onChange={e=>setNewWorker(x=>({...x,phone:e.target.value}))} placeholder="0550 123 456"/>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerGrade}</label>
-                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    value={newWorker.grade} onChange={e=>setNewWorker(x=>({...x,grade:e.target.value}))} placeholder="Technicien"/>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">{txt.addWorkerJobTitle}</label>
-                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  value={newWorker.jobTitle} onChange={e=>setNewWorker(x=>({...x,jobTitle:e.target.value}))} placeholder="عامل صيانة"/>
-              </div>
-              {workerMsg&&<p className="text-xs py-1">{workerMsg}</p>}
-              <button onClick={handleAddWorker} disabled={addingWorker}
-                className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 transition-colors">
-                {addingWorker?'…':txt.addWorkerBtn}
-              </button>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-2">{txt.tableColsTitle}</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(colLabels).map(([k,l])=>{
+                const on = d.visibleCols[k]!==false
+                return(
+                  <button key={k} onClick={()=>setD(x=>({...x,visibleCols:{...x.visibleCols,[k]:!on}}))}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${on?'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400':'border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+                    <span className="text-xs">{on?'✓':'○'}</span> {l}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
       </div>
+
+      <div className={card}>
+        <div className={head}>
+          <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm">⚡ {txt.escalationTitle}</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+            {lang==='ar'?'تصعيد تلقائي لأولوية التذاكر غير المحلولة':lang==='fr'?'Escalade automatique des tickets non résolus':'Unresolved tickets auto-escalate in priority'}
+          </p>
+        </div>
+        <div className="p-5 space-y-5">
+          {[
+            {key:'escalateLowToMedium',  label:txt.escalateLowLabel,   color:'#f59e0b'},
+            {key:'escalateMediumToHigh', label:txt.escalateMediumLabel, color:'#ef4444'},
+          ].map(f=>(
+            <div key={f.key}>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-gray-600 dark:text-slate-400">{f.label}</span>
+                <span className="text-sm font-bold tabular-nums text-gray-800 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg">{d[f.key]}h</span>
+              </div>
+              <input type="range" min={6} max={168} step={6} value={d[f.key]}
+                onChange={e=>setD(x=>({...x,[f.key]:+e.target.value}))}
+                className="w-full" style={{accentColor:f.color}}/>
+              <div className="flex justify-between text-xs text-gray-400 dark:text-slate-600 mt-1">
+                <span>6h</span><span>168h (7 {lang==='ar'?'أيام':lang==='fr'?'jours':'days'})</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={save}
+        className={`w-full py-3 rounded-xl text-sm font-semibold transition-all shadow-sm ${saved?'bg-emerald-600 text-white':'bg-blue-600 text-white hover:bg-blue-700'}`}>
+        {saved?`✓ ${txt.saved}`:txt.save}
+      </button>
     </div>
   )
 }
@@ -1001,7 +1157,7 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
 // ─── Worker Drawer ─────────────────────────────────────────────────────────────
 function WorkerDrawer({worker, tickets, txt, lang, onClose}){
   const workerTickets=useMemo(()=>{
-    const id=worker['numero']
+    const id=worker['id']
     return tickets
       .filter(t=>{try{return JSON.parse(t.assigned_workers||'[]').includes(id)}catch{return false}})
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
@@ -1042,8 +1198,8 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
                 <h3 className="font-bold text-white text-lg leading-tight">{worker['nom']} {worker['prenom']}</h3>
                 <p className="text-slate-400 text-sm mt-0.5">{worker['grade']||'—'}</p>
                 {worker['job_title']&&<p className="text-slate-500 text-xs mt-0.5">{worker['job_title']}</p>}
-                {worker['residence']&&<p className="text-slate-500 text-xs mt-0.5">🏠 {worker['residence']}</p>}
-                {worker['phone']&&<p className="text-slate-500 text-xs mt-1">📞 {worker['phone']}</p>}
+                {worker['residence']&&<p className="text-slate-500 text-xs mt-0.5">{worker['residence']}</p>}
+                {worker['phone']&&<p className="text-slate-500 text-xs mt-1">{worker['phone']}</p>}
               </div>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 text-xl leading-none">✕</button>
@@ -1134,6 +1290,335 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
   )
 }
 
+// ─── Night Shift Reports ──────────────────────────────────────────────────────
+function ReportsView({ adminId, tickets, workers, lang, txt }) {
+  const [shifts, setShifts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('night_shift_assignments')
+        .select('shift_date, worker_id')
+        .eq('assigned_by', adminId)
+        .order('shift_date', { ascending: false })
+      if (data) {
+        const grouped = data.reduce((acc, row) => {
+          if (!acc[row.shift_date]) acc[row.shift_date] = { date: row.shift_date, workerIds: [] }
+          acc[row.shift_date].workerIds.push(row.worker_id)
+          return acc
+        }, {})
+        setShifts(Object.values(grouped))
+      }
+      setLoading(false)
+    }
+    load()
+  }, [adminId])
+
+  const getShiftTickets = (date) => {
+    const start = new Date(`${date}T17:00:00`)
+    const next = new Date(date); next.setDate(next.getDate() + 1)
+    const end = new Date(`${next.toISOString().split('T')[0]}T08:00:00`)
+    return tickets.filter(t => {
+      const created = new Date(t.created_at)
+      const resolved = t.resolved_at ? new Date(t.resolved_at) : null
+      return (created >= start && created <= end) || (resolved && resolved >= start && resolved <= end)
+    })
+  }
+
+  const fmtDate = (d) => new Date(d).toLocaleDateString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+
+  const statusColor = { 'En attente':'#f59e0b', 'En cours':'#3b82f6', 'Résolu':'#10b981' }
+  const priorityColor = { 'Urgent':'#ef4444', 'Haute':'#f97316', 'Normale':'#6b7280', 'Basse':'#94a3b8' }
+
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/></div>
+
+  if (shifts.length === 0) return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-12 text-center">
+      <p className="text-4xl mb-3">🌙</p>
+      <p className="text-gray-500 dark:text-slate-400 text-sm">{txt.nightShiftNone}</p>
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm px-5 py-4">
+        <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm">📋 {txt.nightShiftReport}</p>
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{shifts.length} {txt.nightShiftShifts}</p>
+      </div>
+
+      {shifts.map(shift => {
+        const shiftWorkers = workers.filter(w => shift.workerIds.includes(w['id']))
+        const shiftTickets = getShiftTickets(shift.date)
+        const resolved = shiftTickets.filter(t => t.statut === 'Résolu')
+        const created = shiftTickets.filter(t => {
+          const c = new Date(t.created_at)
+          const start = new Date(`${shift.date}T17:00:00`)
+          const next = new Date(shift.date); next.setDate(next.getDate() + 1)
+          const end = new Date(`${next.toISOString().split('T')[0]}T08:00:00`)
+          return c >= start && c <= end
+        })
+        const isOpen = expanded === shift.date
+
+        return (
+          <div key={shift.date} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            {/* Header row */}
+            <button onClick={() => setExpanded(isOpen ? null : shift.date)}
+              className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xl shrink-0">🌙</div>
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm">{fmtDate(shift.date)}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">17h00 → 08h00 · {shiftWorkers.length} {txt.nightShiftWorkers}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex gap-2">
+                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{background:'#d1fae5',color:'#065f46'}}>{resolved.length} {txt.nightShiftResolved}</span>
+                  {created.length > 0 && <span className="text-xs px-2 py-1 rounded-full font-medium" style={{background:'#dbeafe',color:'#1e40af'}}>{created.length} {txt.nightShiftCreated}</span>}
+                </div>
+                <span className="text-gray-400 text-xs">{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="border-t border-gray-100 dark:border-slate-800 divide-y dark:divide-slate-800">
+                {/* Workers section */}
+                <div className="px-5 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-3">👷 {txt.nightShiftTeam}</p>
+                  {shiftWorkers.length === 0
+                    ? <p className="text-xs text-gray-400">—</p>
+                    : <div className="flex flex-wrap gap-2">
+                        {shiftWorkers.map(w => (
+                          <div key={w['id']} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{w['nom']?.[0]}{w['prenom']?.[0]}</div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-800 dark:text-slate-200">{w['nom']} {w['prenom']}</p>
+                              {w['username'] && <p className="text-xs text-gray-400 font-mono">@{w['username']}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                  }
+                </div>
+
+                {/* Tickets section */}
+                {shiftTickets.length === 0
+                  ? <div className="px-5 py-4 text-xs text-gray-400">{txt.nightShiftNoTickets}</div>
+                  : <div className="px-5 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-3">🎫 Tickets</p>
+                      <div className="space-y-2">
+                        {shiftTickets.map(t => (
+                          <div key={t.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2.5">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{background: priorityColor[t.priority] || '#6b7280'}}/>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">{t.nom}</p>
+                              <p className="text-xs text-gray-400 truncate">{t.problem_type} · {t.chambre}</p>
+                            </div>
+                            <span className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full" style={{background: statusColor[t.statut]+'20', color: statusColor[t.statut]}}>
+                              {txt.statuses[t.statut]||t.statut}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                }
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Messaging components ─────────────────────────────────────────────────────
+function ComposeModal({ admin, allAdmins, lang, txt, onClose, onSent, defaultReceiverId, replyToMessageId }) {
+  const [receiverId, setReceiverId] = useState(defaultReceiverId ? String(defaultReceiverId) : '')
+  const [content, setContent]       = useState('')
+  const [sending, setSending]       = useState(false)
+  const [error, setError]           = useState('')
+
+  const isReply = !!defaultReceiverId
+  const replyRecipient = isReply ? allAdmins.find(a=>a.id===defaultReceiverId) : null
+  const replyName = replyRecipient ? ((lang==='ar'?replyRecipient.full_name_ar:replyRecipient.full_name)||replyRecipient.username) : '—'
+
+  const recipients = allAdmins.filter(a => {
+    if (a.id === admin.id) return false
+    if (admin.role === 'directeur_general')   return a.role === 'directeur_residence'
+    if (admin.role === 'directeur_residence') return a.role === 'chef_service_technique' && a.residence_id === admin.residence_id
+    return false
+  })
+
+  const handleSend = async () => {
+    setError('')
+    if (!receiverId || !content.trim()) { setError(txt.msgErrorEmpty); return }
+    setSending(true)
+    const { data, error: err } = await supabase.from('messages').insert([{
+      sender_id: admin.id, receiver_id: parseInt(receiverId), content: content.trim(), reply_to_id: replyToMessageId || null,
+    }]).select().single()
+    setSending(false)
+    if (err) { setError(err.message); return }
+    onSent(data)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+          <h2 className="font-semibold text-gray-800 dark:text-slate-200 text-base">
+            {isReply ? `↩ ${lang==='ar'?'رد':'Répondre'}` : txt.compose}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 text-2xl leading-none">×</button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-1.5">{txt.msgTo}</label>
+            {isReply
+              ? <div className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400">{replyName}</div>
+              : <select value={receiverId} onChange={e=>setReceiverId(e.target.value)}
+                  className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
+                  <option value="">{txt.selectRecipient}</option>
+                  {recipients.map(r=>(
+                    <option key={r.id} value={r.id}>
+                      {(lang==='ar'?r.full_name_ar:r.full_name)||r.username}
+                    </option>
+                  ))}
+                </select>
+            }
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-1.5">Message</label>
+            <textarea value={content} onChange={e=>setContent(e.target.value)} placeholder={lang==='ar'?'اكتب رسالتك…':lang==='fr'?'Écrivez votre message…':'Write your message…'}
+              className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 resize-none h-32"/>
+          </div>
+          {error&&<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800">{lang==='ar'?'إلغاء':lang==='fr'?'Annuler':'Cancel'}</button>
+            <button onClick={handleSend} disabled={sending} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              {sending ? txt.sending : (lang==='ar'?'إرسال':lang==='fr'?'Envoyer':'Send')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MessagesView({ admin, messages, setMessages, allAdmins, lang, txt, canCompose, onCompose, onReply }) {
+  const [tab, setTab]         = useState('inbox')
+  const [selected, setSelected] = useState(null)
+
+  const inbox = messages.filter(m=>m.receiver_id===admin.id)
+  const sent  = messages.filter(m=>m.sender_id===admin.id)
+  const displayed = tab==='inbox' ? inbox : sent
+
+  const getName = id => {
+    const a = allAdmins.find(a=>a.id===id)
+    if (!a) return '—'
+    return (lang==='ar'?a.full_name_ar:a.full_name)||a.username
+  }
+
+  const markRead = async msg => {
+    if (msg.receiver_id!==admin.id||msg.is_read) return
+    await supabase.from('messages').update({is_read:true}).eq('id',msg.id)
+    setMessages(prev=>prev.map(m=>m.id===msg.id?{...m,is_read:true}:m))
+  }
+
+  const handleSelect = msg => {
+    setSelected(selected?.id===msg.id?null:msg)
+    markRead(msg)
+  }
+
+  const unreadInbox = inbox.filter(m=>!m.is_read).length
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex gap-2">
+          {['inbox','sent'].map(t=>(
+            <button key={t} onClick={()=>setTab(t)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab===t?'bg-blue-600 text-white shadow-sm':'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
+              {t==='inbox'?txt.inbox:txt.sent}
+              {t==='inbox'&&unreadInbox>0&&<span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{unreadInbox}</span>}
+            </button>
+          ))}
+        </div>
+        {canCompose&&(
+          <button onClick={onCompose} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 shadow-sm transition-colors">
+            ✉️ {txt.compose}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {displayed.length===0
+          ?<div className="text-center py-16 text-gray-400 dark:text-slate-600 text-sm">{txt.noMessages}</div>
+          :displayed.map(msg=>{
+            const original = msg.reply_to_id ? messages.find(m=>m.id===msg.reply_to_id) : null
+            const originalSenderName = original ? getName(original.sender_id) : null
+            return(
+            <div key={msg.id} onClick={()=>handleSelect(msg)}
+              className={`bg-white dark:bg-slate-900 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                selected?.id===msg.id?'border-blue-300 dark:border-blue-700 shadow-md':'border-gray-100 dark:border-slate-800 hover:border-gray-200 dark:hover:border-slate-700'
+              } ${tab==='inbox'&&!msg.is_read?'border-l-4 border-l-blue-500':''}`}>
+              <div className="px-4 py-3.5 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${tab==='inbox'?'bg-indigo-500':'bg-blue-500'}`}>
+                    {getName(tab==='inbox'?msg.sender_id:msg.receiver_id)[0]}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm truncate ${tab==='inbox'&&!msg.is_read?'font-semibold text-gray-900 dark:text-slate-100':'font-medium text-gray-700 dark:text-slate-300'}`}>
+                      {tab==='inbox'?`${txt.msgFrom}: ${getName(msg.sender_id)}`:`${txt.msgTo}: ${getName(msg.receiver_id)}`}
+                    </p>
+                    {original
+                      ? <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">
+                          <span className="text-indigo-400 dark:text-indigo-500 font-medium">↩ {originalSenderName}:</span>{' '}
+                          {original.content}
+                        </p>
+                      : <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{msg.content}</p>
+                    }
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className="text-xs text-gray-400 dark:text-slate-500 whitespace-nowrap">
+                    {new Date(msg.created_at).toLocaleDateString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US',{month:'short',day:'numeric'})}
+                  </span>
+                  {tab==='inbox'&&!msg.is_read&&<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"/>}
+                </div>
+              </div>
+              {selected?.id===msg.id&&(
+                <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-slate-800 space-y-3">
+                  {original&&(
+                    <div className="rounded-lg px-3 py-2.5 border-l-4 border-indigo-300 dark:border-indigo-600" style={{background:'rgba(99,102,241,0.06)'}}>
+                      <p className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mb-1">{originalSenderName}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{original.content}</p>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400 dark:text-slate-500">
+                      {new Date(msg.created_at).toLocaleString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US')}
+                    </p>
+                    {tab==='inbox'&&(
+                      <button onClick={e=>{e.stopPropagation();onReply(msg.sender_id,msg.id)}}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                        ↩ {lang==='ar'?'رد':lang==='fr'?'Répondre':'Reply'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )})
+        }
+      </div>
+    </div>
+  )
+}
+
 const ROLE_LABELS = {
   directeur_general:     { en:'Director General',       fr:'Directeur Général',      ar:'المدير العام' },
   directeur_residence:   { en:'Residence Director',     fr:'Directeur Résidence',    ar:'مدير الإقامة' },
@@ -1148,18 +1633,26 @@ export default function Dashboard({admin,onLogout}){
   const [tickets,setTickets]=useState([])
   const [workers,setWorkers]=useState([])
   const [feedbacks,setFeedbacks]=useState([])
-  const [notifications,setNotifications]=useState([])
+  const [lastRead,setLastRead]=useState(()=>{try{return parseInt(localStorage.getItem('notifRead_'+admin.id)||'0')}catch{return 0}})
   const [loading,setLoading]=useState(true)
   const [selTicket,setSelTicket]=useState(null)
   const [editTicket,setEditTicket]=useState(null)   // ← NEW: ticket being edited
   const [showNewTicket,setShowNewTicket]=useState(false)  // ← NEW
   const [updating,setUpdating]=useState(false)
   const [showExport,setShowExport]=useState(false)
-  const [showSettings,setShowSettings]=useState(false)
+  const [showAddWorker,setShowAddWorker]=useState(false)
   const [activeView,setActiveView]=useState('tickets')
   const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
   const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem('dm')==='1'}catch{return false}})
   const [selectedWorker,setSelectedWorker]=useState(null)
+  const [messages,setMessages]=useState([])
+  const [allAdmins,setAllAdmins]=useState([])
+  const [showCompose,setShowCompose]=useState(false)
+  const [replyTo,setReplyTo]=useState(null)
+  const [replyToMsgId,setReplyToMsgId]=useState(null)
+  const [nightShiftIds,setNightShiftIds]=useState(new Set())
+  const [credWorker,setCredWorker]=useState(null)
+  const [credDob,setCredDob]=useState('')
 
   useEffect(()=>{
     document.documentElement.classList.toggle('dark',darkMode)
@@ -1183,13 +1676,11 @@ export default function Dashboard({admin,onLogout}){
       setLoading(true)
       let tq=supabase.from('tickets').select('*').order('created_at',{ascending:false})
       let wq=supabase.from('workers').select('*')
-      let nq=supabase.from('notifications').select('*').order('created_at',{ascending:false}).limit(50)
       if(!isGlobal&&admin.residence_id){
         tq=tq.eq('residence_id',admin.residence_id)
         wq=wq.eq('residence_id',admin.residence_id)
-        nq=nq.eq('residence_id',admin.residence_id)
       }
-      const [{data:td},{data:wd},{data:nd}]=await Promise.all([tq,wq,nq])
+      const [{data:td},{data:wd}]=await Promise.all([tq,wq])
       // filter feedback to only tickets belonging to this residence
       let fd=[]
       if(td&&td.length>0){
@@ -1197,32 +1688,66 @@ export default function Dashboard({admin,onLogout}){
         const {data:fdData}=await supabase.from('feedback').select('*').in('ticket_id',ids)
         fd=fdData||[]
       }
-      if(td)setTickets(td);if(wd)setWorkers(wd);setFeedbacks(fd);if(nd)setNotifications(nd)
+      const today=new Date().toISOString().split('T')[0]
+      const [mRes,aRes,nsRes]=await Promise.all([
+        supabase.from('messages').select('*').or(`sender_id.eq.${admin.id},receiver_id.eq.${admin.id}`).order('created_at',{ascending:false}),
+        supabase.from('admins').select('id,username,full_name,full_name_ar,role,residence_id'),
+        supabase.from('night_shift_assignments').select('worker_id').eq('shift_date',today),
+      ])
+      if(td)setTickets(td);if(wd)setWorkers(wd);setFeedbacks(fd)
+      if(mRes.data)setMessages(mRes.data);if(aRes.data)setAllAdmins(aRes.data)
+      if(nsRes.data)setNightShiftIds(new Set(nsRes.data.map(r=>r.worker_id)))
       setLoading(false)
     }
     loadInitial()
-    const tc=supabase.channel('db-tickets')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},p=>{
-        setTickets(prev=>[p.new,...prev])
-        addToast({id:Date.now(),title:p.new.nom,body:`${p.new.problem_type} · ${p.new.tracking_code}`})
-        setNotifications(prev=>[{id:Date.now(),ticket_id:p.new.id,tracking_code:p.new.tracking_code,nom:p.new.nom,message_admin:`${p.new.nom} — ${p.new.problem_type}`,type:'new_ticket',read_by_admin:false,created_at:p.new.created_at},...prev])
+    const timers=timerRef.current
+    const ticketFilter=(!isGlobal&&admin.residence_id)?`residence_id=eq.${admin.residence_id}`:undefined
+    const ch=supabase.channel(`db-changes-${admin.id}`)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets',...(ticketFilter&&{filter:ticketFilter})},p=>{
+        setTickets(prev=>{
+          if(prev.some(t=>t.id===p.new.id))return prev
+          addToast({id:Date.now(),title:p.new.nom,body:`${p.new.problem_type} · ${p.new.tracking_code}`})
+          return [p.new,...prev]
+        })
       })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tickets'},p=>{
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tickets',...(ticketFilter&&{filter:ticketFilter})},p=>{
         setTickets(prev=>prev.map(t=>t.id===p.new.id?p.new:t))
         setSelTicket(prev=>prev?.id===p.new.id?p.new:prev)
       })
       .on('postgres_changes',{event:'DELETE',schema:'public',table:'tickets'},p=>{
         setTickets(prev=>prev.filter(t=>t.id!==p.old.id))
       })
-      .subscribe()
-    const timers=timerRef.current
-    const nc=supabase.channel('db-notifs')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},p=>{
-        if(p.new.type==='new_ticket')setNotifications(prev=>prev.some(n=>n.tracking_code===p.new.tracking_code&&n.type==='new_ticket')?prev:[p.new,...prev])
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},p=>{
+        if(p.new.receiver_id===admin.id||p.new.sender_id===admin.id){
+          setMessages(prev=>prev.some(m=>m.id===p.new.id)?prev:[p.new,...prev])
+          if(p.new.receiver_id===admin.id)
+            addToast({id:Date.now(),title:lang==='ar'?'رسالة جديدة':lang==='fr'?'Nouveau message':'New message',body:p.new.content.slice(0,60)})
+        }
       })
-      .subscribe()
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages'},p=>{
+        setMessages(prev=>prev.map(m=>m.id===p.new.id?p.new:m))
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'night_shift_assignments'},p=>{
+        setNightShiftIds(prev=>new Set([...prev,p.new.worker_id]))
+      })
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'night_shift_assignments'},p=>{
+        setNightShiftIds(prev=>{const s=new Set(prev);s.delete(p.old.worker_id);return s})
+      })
+      .subscribe(async(status)=>{
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+          // realtime failed — fall back to polling every 30s
+          const poll=setInterval(async()=>{
+            let q=supabase.from('tickets').select('*').order('created_at',{ascending:false})
+            if(!isGlobal&&admin.residence_id)q=q.eq('residence_id',admin.residence_id)
+            const{data}=await q
+            if(data)setTickets(data)
+          },30000)
+          timers['poll']=poll
+        }
+      })
     return()=>{
-      supabase.removeChannel(tc);supabase.removeChannel(nc);Object.values(timers).forEach(clearTimeout)
+      supabase.removeChannel(ch)
+      Object.values(timers).forEach(id=>typeof id==='number'?clearTimeout(id):clearInterval(id))
     }
   },[addToast])
 
@@ -1235,10 +1760,14 @@ export default function Dashboard({admin,onLogout}){
 
   const updateStatus=async(id,s)=>{
     setUpdating(true)
-    const upd={statut:s};if(s==='Résolu')upd.resolved_at=new Date().toISOString()
-    await supabase.from('tickets').update(upd).eq('id',id)
-    const t=tickets.find(t=>t.id===id)
-    if(t)await supabase.from('notifications').insert([{ticket_id:id,tracking_code:t.tracking_code,nom:t.nom,message_student:`Your ticket ${t.tracking_code} is now: ${s}`,type:'status_update',read_by_admin:true}])
+    const upd={statut:s};if(s==='Résolu')upd.resolved_at=new Date().toISOString();else upd.resolved_at=null
+    const {error}=await supabase.from('tickets').update(upd).eq('id',id)
+    if(!error){
+      setTickets(prev=>prev.map(t=>t.id===id?{...t,...upd}:t))
+      setSelTicket(prev=>prev?.id===id?{...prev,...upd}:prev)
+      const t=tickets.find(t=>t.id===id)
+      if(t) supabase.from('notifications').insert([{ticket_id:id,tracking_code:t.tracking_code,nom:t.nom,message_student:`Your ticket ${t.tracking_code} is now: ${s}`,type:'status_update',read_by_admin:true}])
+    }
     setUpdating(false)
   }
   const saveNote=async(id,note,workers,tools)=>{
@@ -1246,11 +1775,36 @@ export default function Dashboard({admin,onLogout}){
     setTickets(prev=>prev.map(t=>t.id===id?{...t,admin_note:note,assigned_workers:workers,tools_used:tools}:t))
     setSelTicket(prev=>prev?{...prev,admin_note:note,assigned_workers:workers,tools_used:tools}:prev)
   }
-  const markAllRead=async()=>{
-    await supabase.from('notifications').update({read_by_admin:true}).eq('read_by_admin',false)
-    setNotifications(prev=>prev.map(n=>({...n,read_by_admin:true})))
+  const markAllRead=()=>{
+    const now=Date.now()
+    setLastRead(now)
+    try{localStorage.setItem('notifRead_'+admin.id,String(now))}catch{}
+  }
+
+  const toggleNightShift=async(workerId)=>{
+    const today=new Date().toISOString().split('T')[0]
+    if(nightShiftIds.has(workerId)){
+      await supabase.from('night_shift_assignments').delete().eq('worker_id',workerId).eq('shift_date',today)
+      setNightShiftIds(prev=>{const s=new Set(prev);s.delete(workerId);return s})
+    } else {
+      const {error}=await supabase.from('night_shift_assignments').insert([{worker_id:workerId,assigned_by:admin.id,shift_date:today}])
+      if(!error) setNightShiftIds(prev=>new Set([...prev,workerId]))
+    }
   }
   const saveSettings=s=>{setSettings(s);try{localStorage.setItem('dashSettings',JSON.stringify(s))}catch{/* ignore storage write errors */}}
+
+  const generateCredentialsForWorker=async()=>{
+    if(!credWorker||!credDob) return
+    const res=credWorker['residence']||''
+    const username=`${normalizeForUsername(res)}_${normalizeForUsername(credWorker['nom'])}_${normalizeForUsername(credWorker['prenom']||'')}`
+    const [y,m,d]=credDob.split('-')
+    const password=`${d}${m}${y}`
+    const {error}=await supabase.from('workers').update({username,password,date_of_birth:credDob}).eq('id',credWorker['id'])
+    if(!error){
+      setWorkers(prev=>prev.map(w=>w['id']===credWorker['id']?{...w,username,password,date_of_birth:credDob}:w))
+      setCredWorker(null);setCredDob('')
+    }
+  }
 
   // ── NEW: handlers for new/edit/delete ──────────────────────────────────────
   const handleTicketCreated = (newTicket) => {
@@ -1279,88 +1833,109 @@ export default function Dashboard({admin,onLogout}){
   }
 
   const handlePrint=(data)=>{
-    const arStatuses={'En attente':'قيد الانتظار','En cours':'قيد المعالجة','Résolu':'تم الحل'}
-    const today=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/')
-    const residenceName=data.find(t=>t.residence)?.residence||data.find(t=>t.pavillon)?.pavillon||'—'
-    const rows=data.map((t,i)=>`<tr>
+    const isAr = lang === 'ar'
+    const isFr = lang === 'fr'
+    const dir  = isAr ? 'rtl' : 'ltr'
+    const locale = isAr ? 'ar-DZ' : isFr ? 'fr-FR' : 'en-US'
+    const today = new Date().toLocaleDateString(locale, { year:'numeric', month:'long', day:'numeric' })
+    const residenceName = data.find(t=>t.residence)?.residence || data.find(t=>t.pavillon)?.pavillon || '—'
+
+    const statusMap = isAr
+      ? {'En attente':'قيد الانتظار','En cours':'قيد المعالجة','Résolu':'تم الحل'}
+      : isFr
+        ? {'En attente':'En attente','En cours':'En cours','Résolu':'Résolu'}
+        : {'En attente':'Pending','En cours':'In Progress','Résolu':'Resolved'}
+    const priorityMap = isAr
+      ? {High:'عالية',Medium:'متوسطة',Low:'منخفضة',Urgent:'عاجل'}
+      : isFr
+        ? {High:'Haute',Medium:'Moyenne',Low:'Faible',Urgent:'Urgent'}
+        : {High:'High',Medium:'Medium',Low:'Low',Urgent:'Urgent'}
+
+    const L = isAr ? {
+      title:'سجل طلبات الصيانة', org:'RESITECH', residence:'الإقامة الجامعية',
+      date:'التاريخ', ref:'المرجع', total:'المجموع',
+      col:['#','اسم الطالب','التاريخ','نوع المشكلة','الموقع','الأولوية','الحالة','ملاحظات'],
+      sigLeft:'إمضاء مدير الإقامة', sigRight:'إمضاء رئيس مصلحة الصيانة', generated:'وثيقة صادرة عن منصة RESITECH',
+    } : isFr ? {
+      title:'Registre des demandes de maintenance', org:'RESITECH', residence:'Résidence',
+      date:'Date', ref:'Référence', total:'Total',
+      col:['N°','Étudiant','Date','Type de problème','Emplacement','Priorité','Statut','Notes'],
+      sigLeft:'Signature du directeur de résidence', sigRight:'Signature du chef de service technique', generated:'Document généré par RESITECH',
+    } : {
+      title:'Maintenance Request Log', org:'RESITECH', residence:'Residence',
+      date:'Date', ref:'Reference', total:'Total',
+      col:['#','Student','Date','Problem Type','Location','Priority','Status','Notes'],
+      sigLeft:'Residence Director Signature', sigRight:'Technical Service Manager Signature', generated:'Document generated by RESITECH',
+    }
+
+    const ref = `RT-${new Date().getFullYear()}-${String(data.length).padStart(4,'0')}`
+
+    const rows = data.map((t,i) => `<tr>
       <td>${String(i+1).padStart(2,'0')}</td>
-      <td>${t.nom||''}</td>
-      <td>${new Date(t.created_at).toLocaleDateString('ar-DZ',{year:'numeric',month:'2-digit',day:'2-digit'})}</td>
+      <td style="text-align:${dir==='rtl'?'right':'left'};padding-${dir==='rtl'?'right':'left'}:8px">${t.nom||''}</td>
+      <td>${new Date(t.created_at).toLocaleDateString(locale,{year:'numeric',month:'2-digit',day:'2-digit'})}</td>
       <td>${t.problem_type||''}</td>
-      <td></td>
-      <td>${t.residence||t.pavillon||''}</td>
-      <td></td>
-      <td></td>
-      <td>${arStatuses[t.statut]||t.statut||''}</td>
-      <td style="font-size:8px">${t.admin_note||t.exact_location||''}</td>
+      <td>${t.exact_location||t.residence||t.chambre||''}</td>
+      <td>${priorityMap[t.priorite]||t.priorite||''}</td>
+      <td>${statusMap[t.statut]||t.statut||''}</td>
+      <td style="font-size:8px;color:#555">${t.admin_note||''}</td>
     </tr>`).join('')
-    const html=`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"/>
-    <title>سجل الشكاوى والطلبات</title>
+
+    const html = `<!DOCTYPE html><html dir="${dir}" lang="${lang}"><head><meta charset="UTF-8"/>
+    <title>${L.title}</title>
     <style>
-      @page{size:A4 landscape;margin:12mm}
+      @page{size:A4 landscape;margin:14mm 12mm}
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Arial',sans-serif;font-size:11px;direction:rtl;color:#000;background:#fff}
-      .header{display:grid;grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:start;margin-bottom:12px}
-      .hright{text-align:right}
-      .hcenter{text-align:center;line-height:1.9}
-      .hleft{text-align:left}
-      .logo-box{border:1px solid #1a3a6b;border-radius:4px;padding:6px 10px;font-size:8.5px;line-height:1.5;color:#1a3a6b;font-weight:bold;display:inline-block;text-align:center}
-      .date-row{font-size:10.5px;margin-top:6px}
-      .res-label{font-size:11px}
-      .res-value{font-size:22px;font-weight:bold;border-bottom:2.5px solid #000;padding-bottom:2px;display:inline-block;margin-top:4px}
-      .doc-title{text-align:center;margin:14px 0}
-      .doc-title span{font-size:18px;font-weight:bold;color:#b00000;border:2px solid #b00000;padding:7px 44px;border-radius:4px;display:inline-block}
-      table{width:100%;border-collapse:collapse;margin-bottom:18px}
-      thead th{background:#1a3a6b;color:#fff;padding:7px 4px;text-align:center;border:1px solid #1a3a6b;font-size:9.5px;font-weight:bold}
-      tbody td{padding:5px 4px;text-align:center;border:1px solid #aaa;font-size:9px;vertical-align:middle}
-      tbody tr:nth-child(even){background:#f0f4f8}
-      .footer{display:grid;grid-template-columns:1fr 1fr;margin-top:16px;gap:20px}
-      .footer-right{text-align:right;font-size:11px;line-height:2.2}
-      .footer-left{text-align:left;font-size:11px}
-      .dots{margin-top:50px;color:#555;letter-spacing:2px}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;direction:${dir};color:#111;background:#fff}
+      /* ── Header ── */
+      .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:2px solid #1e293b;margin-bottom:14px}
+      .org-block .org-name{font-size:20px;font-weight:700;letter-spacing:1px;color:#1e293b}
+      .org-block .org-sub{font-size:9px;color:#64748b;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
+      .meta-block{text-align:${dir==='rtl'?'left':'right'};font-size:9.5px;color:#374151;line-height:1.9}
+      .meta-block strong{color:#1e293b}
+      /* ── Title bar ── */
+      .doc-title{background:#1e293b;color:#fff;text-align:center;padding:8px 0;font-size:13px;font-weight:600;letter-spacing:.5px;margin-bottom:14px}
+      /* ── Table ── */
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      thead th{background:#1e293b;color:#fff;padding:6px 5px;text-align:center;font-size:9px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+      tbody td{padding:5px;text-align:center;border-bottom:1px solid #e2e8f0;font-size:9px;vertical-align:middle}
+      tbody tr:nth-child(even){background:#f8fafc}
+      tbody tr:last-child td{border-bottom:2px solid #1e293b}
+      /* ── Footer ── */
+      .footer{display:flex;justify-content:space-between;margin-top:20px;gap:24px}
+      .sig-block{flex:1;font-size:10px;color:#374151}
+      .sig-label{font-weight:600;margin-bottom:40px;color:#1e293b}
+      .sig-line{border-top:1px solid #94a3b8;padding-top:4px;color:#94a3b8;font-size:8.5px}
+      .footer-note{text-align:center;margin-top:20px;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px}
       @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>
     <div class="header">
-      <div class="hright">
-        <div class="logo-box">
-          الديوان الوطني للخدمات الجامعية<br/>
-          مديرية الخدمات الجامعية<br/>
-          باتنة &nbsp;–&nbsp; بوعقال
-        </div>
-        <div class="date-row">التاريخ: &nbsp;${today}</div>
+      <div class="org-block">
+        <div class="org-name">${L.org}</div>
+        <div class="org-sub">${L.residence} — ${residenceName}</div>
       </div>
-      <div class="hcenter">
-        <div>الجمهورية الجزائرية الديمقراطية الشعبية</div>
-        <div>وزارة التعليم العالي والبحث العلمي</div>
-        <div style="margin-top:6px">الديوان الوطني للخدمات الجامعية</div>
-        <div style="font-weight:bold;text-decoration:underline">مديرية الخدمات الجامعية باتنة &nbsp;–&nbsp; بوعقال</div>
-      </div>
-      <div class="hleft">
-        <div class="res-label">الإقامة الجامعية:</div>
-        <div class="res-value">${residenceName}</div>
+      <div class="meta-block">
+        <div><strong>${L.date}:</strong> ${today}</div>
+        <div><strong>${L.ref}:</strong> ${ref}</div>
+        <div><strong>${L.total}:</strong> ${data.length}</div>
       </div>
     </div>
-    <div class="doc-title"><span>سجل الشكاوى والطلبات</span></div>
+    <div class="doc-title">${L.title}</div>
     <table>
-      <thead><tr>
-        <th>الرقم</th><th>اسم الطالب</th><th>تاريخ الإيداع</th><th>نوع الطلب</th>
-        <th>الصفة</th><th>الإقامة</th><th>الكلية</th><th>القسم</th>
-        <th>حالة الطلب</th><th>ملاحظات</th>
-      </tr></thead>
+      <thead><tr>${L.col.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="footer">
-      <div class="footer-right">
-        باتنة في: &nbsp;${today}<br/>
-        مدير الخدمات الجامعية<br/>
-        باتنة &nbsp;–&nbsp; بوعقال
-        <div class="dots">................................</div>
+      <div class="sig-block" style="text-align:${dir==='rtl'?'right':'left'}">
+        <div class="sig-label">${L.sigLeft}</div>
+        <div class="sig-line">${L.sigLeft}</div>
       </div>
-      <div class="footer-left">
-        إمضاء المسؤول عن الإقامة:
-        <div class="dots">................................</div>
+      <div class="sig-block" style="text-align:${dir==='rtl'?'left':'right'}">
+        <div class="sig-label">${L.sigRight}</div>
+        <div class="sig-line">${L.sigRight}</div>
       </div>
     </div>
+    <div class="footer-note">${L.generated} · ${today}</div>
     <script>window.onload=()=>window.print()</script>
     </body></html>`
     const w=window.open('','_blank');w.document.write(html);w.document.close();setShowExport(false)
@@ -1398,7 +1973,8 @@ export default function Dashboard({admin,onLogout}){
   const inp=tickets.filter(t=>t.statut==='En cours').length,resN=tickets.filter(t=>t.statut==='Résolu').length
   const urg=processed.filter(t=>t.ep==='High'&&t.statut!=='Résolu').length
   const cols=settings.visibleCols
-  const unread=notifications.filter(n=>!n.read_by_admin).length
+  const unread=tickets.filter(t=>new Date(t.created_at).getTime()>lastRead).length
+  const unreadMessages=messages.filter(m=>m.receiver_id===admin.id&&!m.is_read).length
 
   const sidebarW = sidebarCollapsed ? '4rem' : '14rem'
 
@@ -1410,16 +1986,17 @@ export default function Dashboard({admin,onLogout}){
     {showNewTicket&&(<NewTicketModal txt={txt} lang={lang} workers={workers} onClose={()=>setShowNewTicket(false)} onCreated={handleTicketCreated} addToast={addToast} residenceId={admin.residence_id}/>)}
     {editTicket&&(<EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers} onClose={()=>setEditTicket(null)} onSaved={handleTicketSaved} onDeleted={handleTicketDeleted} addToast={addToast}/>)}
     {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} isReadOnly={isReadOnly} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>)}
-    {showSettings&&<SettingsPanel settings={settings} onSave={saveSettings} txt={txt} onClose={()=>setShowSettings(false)}/>}
+    {showAddWorker&&<AddWorkerModal txt={txt} lang={lang} admin={admin} residenceName={workers[0]?.residence||''} onClose={()=>setShowAddWorker(false)} onAdded={()=>{ supabase.from('workers').select('*').eq('residence_id',admin.residence_id).then(({data})=>{if(data)setWorkers(data)}) }}/>}
     {selectedWorker&&<WorkerDrawer worker={selectedWorker} tickets={tickets} txt={txt} lang={lang} onClose={()=>setSelectedWorker(null)}/>}
+    {showCompose&&<ComposeModal admin={admin} allAdmins={allAdmins} lang={lang} txt={txt} defaultReceiverId={replyTo} replyToMessageId={replyToMsgId} onClose={()=>{setShowCompose(false);setReplyTo(null);setReplyToMsgId(null)}} onSent={msg=>setMessages(prev=>[msg,...prev])}/>}
 
     {/* ── Sidebar ── */}
-    <aside className={`fixed inset-y-0 z-30 bg-slate-900 flex flex-col transition-all duration-300 ${sidebarCollapsed?'w-16':'w-56'}`}
+    <aside className={`fixed inset-y-0 z-30 bg-slate-900 hidden md:flex flex-col transition-all duration-300 ${sidebarCollapsed?'w-16':'w-56'}`}
       style={{[txt.dir==='rtl'?'right':'left']:0, boxShadow:'4px 0 32px rgba(0,0,0,0.18)'}}>
 
       <div className={`flex items-center gap-3 px-4 py-4 border-b border-slate-800 ${sidebarCollapsed?'justify-center':''}`}>
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-sm shrink-0 shadow-md">🔧</div>
-        {!sidebarCollapsed&&<span className="text-white font-bold text-sm tracking-wide">Repair Pro</span>}
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-md text-white [&_svg]:w-4 [&_svg]:h-4">{IC.wrench}</div>
+        {!sidebarCollapsed&&<span className="text-white font-bold text-sm tracking-wide">RESITECH</span>}
       </div>
 
       {!sidebarCollapsed&&(
@@ -1442,27 +2019,25 @@ export default function Dashboard({admin,onLogout}){
 
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto mt-1">
         {[
-          {id:'tickets',       icon:'🎫', label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
-          {id:'analytics',     icon:'📊', label:txt.charts},
-          {id:'workers',       icon:'👷', label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
-          {id:'notifications', icon:'🔔', label:txt.notifications, badge:unread||null},
+          {id:'tickets',       icon:IC.tickets,   label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
+          {id:'analytics',     icon:IC.analytics, label:txt.charts},
+          {id:'workers',       icon:IC.workers,   label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
+          {id:'notifications', icon:IC.bell,      label:txt.notifications, badge:unread||null},
+          {id:'messages',      icon:IC.mail,      label:txt.messages,      badge:unreadMessages||null},
+          {id:'settings',      icon:IC.settings,  label:txt.settings},
+          ...(!isReadOnly?[{id:'reports', icon:IC.reports, label:lang==='ar'?'تقارير':lang==='fr'?'Rapports':'Reports'}]:[]),
         ].map(item=>(
           <button key={item.id} onClick={()=>setActiveView(item.id)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
               activeView===item.id?'bg-blue-600 text-white shadow-md':'text-slate-400 hover:text-white hover:bg-slate-800'
             } ${sidebarCollapsed?'justify-center':''}`}>
-            <span className="text-base shrink-0">{item.icon}</span>
+            <span className="w-4 h-4 shrink-0 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full">{item.icon}</span>
             {!sidebarCollapsed&&<>
               <span className="font-medium truncate">{item.label}</span>
               {item.badge>0&&<span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shrink-0">{item.badge>9?'9+':item.badge}</span>}
             </>}
           </button>
         ))}
-        <button onClick={()=>setShowSettings(true)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all ${sidebarCollapsed?'justify-center':''}`}>
-          <span className="text-base shrink-0">⚙️</span>
-          {!sidebarCollapsed&&<span className="font-medium">{txt.settings}</span>}
-        </button>
       </nav>
 
       <div className="p-2 border-t border-slate-800 space-y-1">
@@ -1473,47 +2048,49 @@ export default function Dashboard({admin,onLogout}){
         </button>
         <button onClick={onLogout}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm transition-all ${sidebarCollapsed?'justify-center':''}`}>
-          <span className="text-base">🚪</span>
+          <span className="w-4 h-4 shrink-0 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full">{IC.logout}</span>
           {!sidebarCollapsed&&<span className="font-medium">{txt.logout}</span>}
         </button>
       </div>
     </aside>
 
     {/* ── Main ── */}
-    <div className="flex-1 flex flex-col min-h-screen"
-      style={{[txt.dir==='rtl'?'marginRight':'marginLeft']:sidebarW, transition:'margin 0.3s'}}>
+    <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+      txt.dir==='rtl'
+        ? (sidebarCollapsed?'md:mr-16':'md:mr-56')
+        : (sidebarCollapsed?'md:ml-16':'md:ml-56')
+    }`}>
 
-      <header className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-20 px-5 py-3 flex items-center justify-between gap-3 shadow-sm" dir={txt.dir}>
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-20 px-4 py-3 flex items-center justify-between gap-2 shadow-sm" dir={txt.dir}>
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-1 h-6 bg-blue-600 rounded-full shrink-0"/>
-          <h1 className="font-semibold text-gray-800 dark:text-slate-200 text-sm">
-            {activeView==='tickets'?(lang==='ar'?'الطلبات':'Tickets'):activeView==='analytics'?txt.charts:activeView==='workers'?(lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'):txt.notifications}
+          <h1 className="font-semibold text-gray-800 dark:text-slate-200 text-sm truncate">
+            {activeView==='tickets'?(lang==='ar'?'الطلبات':'Tickets'):activeView==='analytics'?txt.charts:activeView==='workers'?(lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'):activeView==='messages'?txt.messages:activeView==='settings'?txt.settings:activeView==='reports'?(lang==='ar'?'تقارير':lang==='fr'?'Rapports':'Reports'):txt.notifications}
           </h1>
-          {activeView==='tickets'&&<span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium">{filtered.length}</span>}
+          {activeView==='tickets'&&<span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium shrink-0">{filtered.length}</span>}
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={()=>setDarkMode(d=>!d)}
-            className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-sm"
-            title={darkMode?'Light mode':'Dark mode'}>
-            {darkMode?'☀️':'🌙'}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+            <span className="w-3.5 h-3.5 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full">{darkMode?IC.sun:IC.moon}</span>
           </button>
-          <div className="flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>{l.label}</button>)}</div>
-          {!isReadOnly&&<button onClick={()=>setShowNewTicket(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
-            <span className="text-sm font-bold leading-none">+</span> {txt.newTicket}
+          <div className="hidden md:flex gap-1">{LANGS.map(l=><button key={l.code} onClick={()=>setLang(l.code)} className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${lang===l.code?'bg-blue-600 text-white border-blue-600':'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>{l.label}</button>)}</div>
+          {!isReadOnly&&<button onClick={()=>setShowNewTicket(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+            <span className="font-bold leading-none">+</span><span className="hidden sm:inline"> {txt.newTicket}</span>
           </button>}
-          <div className="relative" ref={exportRef}>
-            <button onClick={()=>setShowExport(!showExport)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">📥 {txt.exportBtn}</button>
+          <div className="relative hidden md:block" ref={exportRef}>
+            <button onClick={()=>setShowExport(!showExport)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"><span className="w-3.5 h-3.5 [&_svg]:w-full [&_svg]:h-full">{IC.download}</span>{txt.exportBtn}</button>
             {showExport&&(<div className={`absolute top-9 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-xl shadow-lg z-30 w-48 overflow-hidden ${txt.dir==='rtl'?'left-0':'right-0'}`}>
-              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportAll}</button>
-              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">📥 {txt.exportFiltered}</button>
-              <button onClick={()=>handlePrint(filtered)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">🖨️ {txt.printFiltered||'Print filtered'}</button>
-              <button onClick={()=>handlePrint(tickets)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">🖨️ {txt.printAll||'Print all'}</button>
+              <button onClick={()=>exportToExcel(tickets,'all-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">{txt.exportAll}</button>
+              <button onClick={()=>exportToExcel(filtered,'filtered-tickets')} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">{txt.exportFiltered}</button>
+              <button onClick={()=>handlePrint(filtered)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border-b dark:border-slate-700">{txt.printFiltered||'Print filtered'}</button>
+              <button onClick={()=>handlePrint(tickets)} className="w-full ltr:text-left rtl:text-right px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">{txt.printAll||'Print all'}</button>
             </div>)}
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-6 overflow-auto" dir={txt.dir}>
+      <main className="flex-1 p-3 md:p-6 pb-24 md:pb-6 overflow-auto" dir={txt.dir}>
 
       {/* ── Tickets view ── */}
       {activeView==='tickets'&&<>
@@ -1523,7 +2100,7 @@ export default function Dashboard({admin,onLogout}){
             {l:txt.pending,        v:pend,  accent:'#f59e0b', text:'text-amber-600', f:{status:'En attente',priority:''}},
             {l:txt.inProgress,     v:inp,   accent:'#3b82f6', text:'text-blue-600',  f:{status:'En cours',priority:''}},
             {l:txt.resolved,       v:resN,  accent:'#10b981', text:'text-emerald-600',f:{status:'Résolu',priority:''}},
-            {l:`⚡ ${txt.urgent}`, v:urg,   accent:'#ef4444', text:'text-red-600',   f:{status:'',priority:'High'}},
+            {l:txt.urgent, v:urg,   accent:'#ef4444', text:'text-red-600',   f:{status:'',priority:'High'}},
           ].map(s=>(
             <button key={s.l} onClick={()=>setFilters(f=>({...f,...s.f}))}
               className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-4 text-left shadow-sm hover:shadow-md transition-all"
@@ -1542,7 +2119,7 @@ export default function Dashboard({admin,onLogout}){
 
         <div className="my-3">
           <input className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-500 shadow-sm"
-            placeholder={`🔍 ${txt.search}`} value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/>
+            placeholder={txt.search} value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1557,7 +2134,28 @@ export default function Dashboard({admin,onLogout}){
             :filtered.length===0
               ?<div className="p-8 text-center text-gray-400 dark:text-slate-500">{txt.noTickets}</div>
               :<>
-                <div className="overflow-x-auto">
+                {/* ── Mobile card list ── */}
+                <div className="md:hidden divide-y dark:divide-slate-800">
+                  {paginated.map(t=>(
+                    <button key={t.id} onClick={()=>setSelTicket(t)}
+                      className={`w-full text-left px-4 py-3.5 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${PB[t.ep]}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="font-semibold text-sm text-gray-800 dark:text-slate-200 truncate">{t.nom}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{tf(t.problem_type,lang,PM)} · {t.chambre}</p>
+                        <p className="text-xs font-mono text-gray-300 dark:text-slate-600 mt-0.5">{t.tracking_code}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(t.created_at).toLocaleDateString()}</span>
+                        {t.ep==='High'&&<span className="text-xs font-bold text-red-600 border border-red-200 rounded px-1">!</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {/* ── Desktop table ── */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-700">
                       <tr>
@@ -1594,7 +2192,7 @@ export default function Dashboard({admin,onLogout}){
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </div>{/* end desktop table */}
                 {totalPages>1&&(
                   <div className="flex items-center justify-between px-4 py-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
                     <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} tickets · {currentPage}/{totalPages}</span>
@@ -1624,12 +2222,30 @@ export default function Dashboard({admin,onLogout}){
               <h3 className="font-semibold text-gray-800 dark:text-slate-200">{lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'}</h3>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{workers.length} {lang==='ar'?'عامل':lang==='fr'?'ouvriers':'workers'}</p>
             </div>
-            {!isReadOnly&&<button onClick={()=>setShowSettings(true)}
+            {!isReadOnly&&<button onClick={()=>setShowAddWorker(true)}
               className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
               + {txt.addWorkerBtn}
             </button>}
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile card list */}
+          <div className="md:hidden divide-y dark:divide-slate-800">
+            {workers.length===0&&<p className="p-8 text-center text-gray-400 dark:text-slate-500 text-sm">{txt.noWorkers}</p>}
+            {workers.map((w,i)=>(
+              <button key={w['id']||i} onClick={()=>setSelectedWorker(w)}
+                className="w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm shrink-0">
+                  {(w['nom']?.[0]||'')}{(w['prenom']?.[0]||'')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-800 dark:text-slate-200 truncate">{w['nom']} {w['prenom']}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{w['job_title']||w['grade']||'—'}{w['residence']?` · ${w['residence']}`:''}</p>
+                </div>
+                {w['phone']&&<p className="text-xs text-gray-400 dark:text-slate-500 shrink-0">{w['phone']}</p>}
+              </button>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
@@ -1643,7 +2259,7 @@ export default function Dashboard({admin,onLogout}){
               </thead>
               <tbody>
                 {workers.map((w,i)=>(
-                  <tr key={w['numero']||i} onClick={()=>setSelectedWorker(w)}
+                  <tr key={w['id']||i} onClick={()=>setSelectedWorker(w)}
                     className="border-b dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
                     <td className="p-3 font-medium text-gray-700 dark:text-slate-200">{w['nom']}</td>
                     <td className="p-3 text-gray-600 dark:text-slate-300">{w['prenom']||'—'}</td>
@@ -1660,46 +2276,166 @@ export default function Dashboard({admin,onLogout}){
         </div>
       )}
 
+      {/* ── Night shift panel (chef only) ── */}
+      {activeView==='workers'&&admin.role==='chef_service_technique'&&(
+        <div className="mt-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 text-indigo-400 [&_svg]:w-full [&_svg]:h-full">{IC.night}</span>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-slate-200 text-sm">{txt.nightShiftTonight}</h3>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{txt.nightShiftAccess} · {nightShiftIds.size} {lang==='ar'?'معيَّن':lang==='fr'?'assigné(s)':'assigned'}</p>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y dark:divide-slate-800">
+            {workers.length===0&&<p className="text-center text-gray-400 text-sm py-6">{txt.noWorkers}</p>}
+            {workers.map(w=>{
+              const assigned=nightShiftIds.has(w['id'])
+              const hasAccount=!!w['username']
+              const isSettingCred=credWorker?.['id']===w['id']
+              return(
+                <div key={w['id']} className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 transition-colors ${assigned?'bg-indigo-600':hasAccount?'bg-slate-400 dark:bg-slate-600':'bg-amber-400'}`}>
+                        {w['nom']?.[0]}{w['prenom']?.[0]}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800 dark:text-slate-200 text-sm">{w['nom']} {w['prenom']}</p>
+                        {hasAccount
+                          ?<p className="text-xs text-gray-400 dark:text-slate-500 font-mono">@{w['username']}</p>
+                          :<p className="text-xs text-amber-500">{txt.noAccount}</p>
+                        }
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!hasAccount&&(
+                        <button onClick={()=>{setCredWorker(isSettingCred?null:w);setCredDob('')}}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 transition-colors">
+                          {isSettingCred?txt.newTicketCancel:txt.createAccount}
+                        </button>
+                      )}
+                      {hasAccount&&(
+                        <button onClick={()=>toggleNightShift(w['id'])}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${assigned?'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200':'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-200'}`}>
+                          {assigned?txt.assignedNight:txt.assignNight}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {isSettingCred&&(
+                    <div className="mt-2 ml-12 flex items-center gap-2">
+                      <input type="date" value={credDob} onChange={e=>setCredDob(e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-200"/>
+                      <button onClick={generateCredentialsForWorker} disabled={!credDob}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40 transition-colors">
+                        {txt.generate}
+                      </button>
+                      {credDob&&(
+                        <span className="text-xs text-gray-400 font-mono">
+                          {(()=>{const[y,m,d]=credDob.split('-');return`${normalizeForUsername(w['residence']||'')}_${normalizeForUsername(w['nom'])}_${normalizeForUsername(w['prenom']||'')} / ${d}${m}${y}`})()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Notifications view ── */}
       {activeView==='notifications'&&(
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden max-w-2xl">
           <div className="px-5 py-4 border-b dark:border-slate-700 flex justify-between items-center">
             <div>
               <h3 className="font-semibold text-gray-800 dark:text-slate-200">{txt.notifications}</h3>
-              {unread>0&&<p className="text-xs text-blue-500 mt-0.5">{unread} {lang==='ar'?'غير مقروء':lang==='fr'?'non lus':'unread'}</p>}
+              {unread>0&&<p className="text-xs text-blue-500 mt-0.5">{unread} {lang==='ar'?'جديد':lang==='fr'?'nouveaux':'new'}</p>}
             </div>
-            <button onClick={markAllRead}
+            {unread>0&&<button onClick={markAllRead}
               className="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
               {txt.markRead}
-            </button>
+            </button>}
           </div>
           <div className="divide-y dark:divide-slate-800 max-h-[calc(100vh-220px)] overflow-y-auto">
-            {notifications.length===0
+            {tickets.length===0
               ?<p className="text-center text-gray-400 dark:text-slate-500 text-sm py-8">{txt.noNotifs}</p>
-              :notifications.map(n=>(
-                <button key={n.id}
-                  onClick={()=>{const t=tickets.find(t=>t.id===n.ticket_id);if(t){setSelTicket(t);setActiveView('tickets')}}}
-                  className={`w-full text-left px-5 py-4 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${n.read_by_admin?'':'bg-blue-50/40 dark:bg-blue-900/10'}`}>
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-700 dark:text-slate-200 truncate">{n.nom}</p>
-                      <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{n.message_admin||txt.newTicket}</p>
-                      <p className="text-gray-300 dark:text-slate-600 text-xs mt-0.5 font-mono">{n.tracking_code}</p>
+              :[...tickets].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,50).map(t=>{
+                const isNew=new Date(t.created_at).getTime()>lastRead
+                return(
+                  <button key={t.id} onClick={()=>{setSelTicket(t);setActiveView('tickets')}}
+                    className={`w-full text-left px-5 py-4 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${isNew?'bg-blue-50/40 dark:bg-blue-900/10':''}`}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${t.statut==='Résolu'?'bg-emerald-100 dark:bg-emerald-900/30':t.statut==='En cours'?'bg-blue-100 dark:bg-blue-900/30':'bg-amber-100 dark:bg-amber-900/30'}`}>
+                          <span className="w-3.5 h-3.5 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full">{t.statut==='Résolu'?IC.check:t.statut==='En cours'?IC.gear:IC.bell}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`truncate ${isNew?'font-semibold text-gray-900 dark:text-slate-100':'font-medium text-gray-700 dark:text-slate-300'}`}>{t.nom}</p>
+                          <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 truncate">{tf(t.problem_type,lang,PM)} · {t.chambre}</p>
+                          <p className="text-gray-300 dark:text-slate-600 text-xs mt-0.5 font-mono">{t.tracking_code}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        {isNew&&<span className="w-2 h-2 rounded-full bg-blue-500"/>}
+                        <span className="text-gray-400 dark:text-slate-500 text-xs whitespace-nowrap">{new Date(t.created_at).toLocaleDateString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US',{month:'short',day:'numeric'})}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                      {!n.read_by_admin&&<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"/>}
-                      <span className="text-gray-300 dark:text-slate-600 text-xs whitespace-nowrap">{new Date(n.created_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </button>
-              ))
+                  </button>
+                )
+              })
             }
           </div>
         </div>
       )}
 
+      {/* ── Settings view ── */}
+      {activeView==='settings'&&(
+        <SettingsView settings={settings} onSave={saveSettings} txt={txt} lang={lang}/>
+      )}
+
+      {/* ── Reports view (chef only) ── */}
+      {activeView==='reports'&&!isReadOnly&&(
+        <ReportsView adminId={admin.id} tickets={tickets} workers={workers} lang={lang} txt={txt}/>
+      )}
+
+      {/* ── Messages view ── */}
+      {activeView==='messages'&&(
+        <MessagesView admin={admin} messages={messages} setMessages={setMessages} allAdmins={allAdmins} lang={lang} txt={txt}
+          canCompose={admin.role!=='chef_service_technique'} onCompose={()=>setShowCompose(true)}
+          onReply={(senderId,msgId)=>{setReplyTo(senderId);setReplyToMsgId(msgId);setShowCompose(true)}}/>
+      )}
+
       </main>
     </div>
+
+    {/* ── Mobile bottom nav ── */}
+    <nav className="fixed bottom-0 inset-x-0 z-30 bg-slate-900 border-t border-slate-800 flex md:hidden" dir="ltr">
+      {[
+        {id:'tickets',       icon:IC.tickets,   label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
+        {id:'analytics',     icon:IC.analytics, label:lang==='ar'?'إحصاء':lang==='fr'?'Stats':'Stats'},
+        {id:'workers',       icon:IC.workers,   label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
+        {id:'notifications', icon:IC.bell,      label:lang==='ar'?'إشعارات':lang==='fr'?'Notifs':'Notifs', badge:unread||null},
+        {id:'messages',      icon:IC.mail,      label:lang==='ar'?'رسائل':lang==='fr'?'Messages':'Msgs', badge:unreadMessages||null},
+        ...(!isReadOnly?[{id:'reports', icon:IC.reports, label:lang==='ar'?'تقارير':lang==='fr'?'Rapports':'Reports'}]:[]),
+      ].map(item=>(
+        <button key={item.id} onClick={()=>setActiveView(item.id)}
+          className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-colors relative ${activeView===item.id?'text-blue-400':'text-slate-500'}`}>
+          {item.badge>0&&<span className="absolute top-1.5 right-1/4 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">{item.badge>9?'9+':item.badge}</span>}
+          <span className="w-5 h-5 [&_svg]:w-full [&_svg]:h-full">{item.icon}</span>
+          <span className="text-[9px] font-medium leading-none tracking-wide">{item.label}</span>
+          {activeView===item.id&&<span className="absolute top-0 inset-x-0 h-0.5 bg-blue-500 rounded-b"/>}
+        </button>
+      ))}
+      <button onClick={onLogout}
+        className="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-red-400 transition-colors">
+        <span className="w-5 h-5 [&_svg]:w-full [&_svg]:h-full">{IC.logout}</span>
+        <span className="text-[9px] font-medium leading-none tracking-wide">{txt.logout}</span>
+      </button>
+    </nav>
 
     <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(110%)}to{opacity:1;transform:translateX(0)}}`}</style>
   </div>

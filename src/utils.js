@@ -44,7 +44,7 @@ export function getDaySlots() {
 
 // Night shift label per language
 export const nightShiftLabel = {
-  en: '🌙 Night Shift (Emergency only)',
-  fr: '🌙 Équipe de nuit (Urgence uniquement)',
-  ar: '🌙 الوردية الليلية (للحالات الطارئة فقط)',
+  en: 'Night Shift (Emergency only)',
+  fr: 'Équipe de nuit (Urgence uniquement)',
+  ar: 'الوردية الليلية (للحالات الطارئة فقط)',
 }

@@ -1,8 +1,21 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
+
+const WrenchIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+  </svg>
+)
+const MoonIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 inline-block">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+)
 import TicketForm from './TicketForm'
 import AdminLogin from './AdminLogin'
 import Dashboard from './Dashboard'
+import WorkerLogin from './WorkerLogin'
+import WorkerPortal from './WorkerPortal'
 import translations from './translations'
 
 const languages = [
@@ -17,9 +30,18 @@ export default function App() {
   const [anneeBac, setAnneeBac] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-  const [student, setStudent] = useState(null)
-  const [admin, setAdmin] = useState(null)
+  const [student, setStudent] = useState(() => { try { return JSON.parse(localStorage.getItem('rt_student') || 'null') } catch { return null } })
+  const [admin,   setAdmin]   = useState(() => { try { return JSON.parse(localStorage.getItem('rt_admin')   || 'null') } catch { return null } })
+  const [worker,  setWorker]  = useState(() => { try { return JSON.parse(localStorage.getItem('rt_worker')  || 'null') } catch { return null } })
   const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [showWorkerLogin, setShowWorkerLogin] = useState(false)
+
+  const loginAdmin   = (a) => { setAdmin(a);   localStorage.setItem('rt_admin',   JSON.stringify(a)) }
+  const logoutAdmin  = ()  => { setAdmin(null); localStorage.removeItem('rt_admin') }
+  const loginWorker  = (w) => { setWorker(w);  localStorage.setItem('rt_worker',  JSON.stringify(w)) }
+  const logoutWorker = ()  => { setWorker(null);localStorage.removeItem('rt_worker') }
+  const loginStudent = (s) => { setStudent(s); localStorage.setItem('rt_student', JSON.stringify(s)) }
+  const logoutStudent= ()  => { setStudent(null);localStorage.removeItem('rt_student') }
 
   const t = translations[lang]
 
@@ -40,15 +62,19 @@ export default function App() {
     setLoading(false)
 
     if (error || !data) { setMessage(t.loginError); return }
-    setStudent(data)
+    loginStudent(data)
   }
 
-  if (admin) return <Dashboard admin={admin} onLogout={() => setAdmin(null)} />
+  if (admin) return <Dashboard admin={admin} onLogout={logoutAdmin} />
 
-  if (showAdminLogin) return <AdminLogin onLogin={setAdmin} onBack={() => setShowAdminLogin(false)} />
+  if (worker) return <WorkerPortal worker={worker} onLogout={logoutWorker} />
+
+  if (showWorkerLogin) return <WorkerLogin onLogin={loginWorker} onBack={() => setShowWorkerLogin(false)} />
+
+  if (showAdminLogin) return <AdminLogin onLogin={loginAdmin} onBack={() => setShowAdminLogin(false)} />
 
   if (student) return (
-    <TicketForm student={student} onLogout={() => setStudent(null)} lang={lang} setLang={setLang} />
+    <TicketForm student={student} onLogout={logoutStudent} lang={lang} setLang={setLang} />
   )
 
   return (
@@ -61,7 +87,7 @@ export default function App() {
       </div>
 
       {/* Grid pattern overlay */}
-      <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
+      <div className="absolute inset-0 opacity-5 pointer-events-none" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
 
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Card */}
@@ -86,8 +112,8 @@ export default function App() {
             {/* Header */}
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)'}}>
-                  🔧
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)'}}>
+                  <WrenchIcon />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold tracking-tight" style={{color: '#f0f6ff'}}>{t.appTitle}</h1>
@@ -119,8 +145,10 @@ export default function App() {
                   style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', caretColor: '#60a5fa'}}
                   onFocus={e => e.target.style.border = '1px solid rgba(59,130,246,0.5)'}
                   onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
-                  placeholder={t.bacYearPlaceholder} type="number"
-                  onChange={e => setAnneeBac(e.target.value)}
+                  placeholder={t.bacYearPlaceholder}
+                  type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4}
+                  value={anneeBac}
+                  onChange={e => setAnneeBac(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && handleStudentLogin()} />
               </div>
 
@@ -143,11 +171,17 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-8 pt-6" style={{borderTop: '1px solid rgba(255,255,255,0.06)'}}>
+            <div className="mt-8 pt-6 flex gap-4 justify-center" style={{borderTop: '1px solid rgba(255,255,255,0.06)'}}>
               <button onClick={() => setShowAdminLogin(true)}
-                className="w-full text-center text-xs transition-colors duration-200"
+                className="text-xs transition-colors duration-200"
                 style={{color: 'rgba(255,255,255,0.2)'}}>
                 Accès administration
+              </button>
+              <span style={{color:'rgba(255,255,255,0.08)'}}>|</span>
+              <button onClick={() => setShowWorkerLogin(true)}
+                className="text-xs transition-colors duration-200"
+                style={{color: 'rgba(255,255,255,0.2)'}}>
+                <MoonIcon /> Équipe de nuit
               </button>
             </div>
           </div>

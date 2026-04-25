@@ -11,7 +11,7 @@ const t = {
   en: {
     dir: 'ltr',
     title: 'Administration',
-    subtitle: 'University Residence — Dashboard',
+    subtitle: 'RESITECH — Dashboard',
     username: 'Username',
     usernamePlaceholder: 'Enter your username',
     password: 'Password',
@@ -26,7 +26,7 @@ const t = {
   fr: {
     dir: 'ltr',
     title: 'Espace Administration',
-    subtitle: 'Résidence Universitaire — Tableau de bord',
+    subtitle: 'RESITECH — Tableau de bord',
     username: "Nom d'utilisateur",
     usernamePlaceholder: "Entrez votre nom d'utilisateur",
     password: 'Mot de passe',
@@ -41,7 +41,7 @@ const t = {
   ar: {
     dir: 'rtl',
     title: 'لوحة الإدارة',
-    subtitle: 'الإقامة الجامعية — لوحة التحكم',
+    subtitle: 'RESITECH — لوحة التحكم',
     username: 'اسم المستخدم',
     usernamePlaceholder: 'أدخل اسم المستخدم',
     password: 'كلمة المرور',
