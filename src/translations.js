@@ -14,6 +14,9 @@ const translations = {
     pavilion: 'Pavilion',
     residence: 'Residence',
     logout: 'Logout',
+    install: 'Add to home screen',
+    installIos: 'Tap the Share button (⬆) in Safari, then "Add to Home Screen".',
+    installDone: 'Done',
 
     location: 'Problem Location',
     locationPlaceholder: 'Select a location',
@@ -110,6 +113,9 @@ const translations = {
     pavilion: 'Pavillon',
     residence: 'Résidence',
     logout: 'Déconnexion',
+    install: 'Ajouter à l\'écran',
+    installIos: 'Dans Safari, appuyez sur ⬆ Partager puis "Sur l\'écran d\'accueil".',
+    installDone: 'OK',
 
     location: 'Emplacement du problème',
     locationPlaceholder: 'Sélectionner un emplacement',
@@ -205,6 +211,9 @@ const translations = {
     pavilion: 'الجناح',
     residence: 'الإقامة',
     logout: 'تسجيل الخروج',
+    install: 'إضافة للشاشة الرئيسية',
+    installIos: 'في Safari، اضغط على ⬆ مشاركة ثم "إضافة إلى الشاشة الرئيسية".',
+    installDone: 'حسناً',
 
     location: 'موقع المشكلة',
     locationPlaceholder: 'اختر الموقع',

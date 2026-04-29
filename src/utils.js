@@ -1,26 +1,5 @@
-// Auto-assign priority based on problem type
-const highPriorityTypes = [
-  // EN
-  'Electricity', 'Water Leakage', 'Security', 'Door / Window',
-  // FR
-  'Électricité', "Fuite d'eau", 'Sécurité', 'Porte / Fenêtre',
-  // AR
-  'الكهرباء', 'تسرب المياه', 'الأمن', 'باب / نافذة',
-]
-
-const mediumPriorityTypes = [
-  // EN
-  'Heating', 'Plumbing', 'Lighting', 'Doors',
-  // FR
-  'Chauffage', 'Plomberie', 'Éclairage', 'Portes',
-  // AR
-  'التدفئة', 'السباكة', 'الإضاءة', 'الأبواب',
-]
-
-export function assignPriority(problemType) {
-  if (highPriorityTypes.includes(problemType)) return 'High'
-  if (mediumPriorityTypes.includes(problemType)) return 'Medium'
-  return 'Low'
+export function assignPriority(_problemType) {
+  return 'Medium'
 }
 
 export function generateTrackingCode() {

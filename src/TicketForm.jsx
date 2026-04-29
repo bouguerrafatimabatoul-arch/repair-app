@@ -2,7 +2,28 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import translations from './translations'
 import { assignPriority, generateTrackingCode, nightShiftLabel } from './utils'
-import { PM, LM, SM, PrioM, tf, toEnKey, toEnLoc } from './constants'
+import { PM, LM, SM, tf, toEnKey, toEnLoc } from './constants'
+
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.connect(ctx.destination)
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+    // Two-tone chime: root + fifth
+    ;[880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      osc.connect(gain)
+      osc.start(ctx.currentTime + i * 0.12)
+      osc.stop(ctx.currentTime + 0.7)
+    })
+    setTimeout(() => ctx.close(), 1000)
+  } catch { /* browser may block without user gesture */ }
+}
 
 const languages = [
   { code: 'en', label: 'EN' },
@@ -10,16 +31,6 @@ const languages = [
   { code: 'ar', label: 'ع' },
 ]
 
-const priorityColors = {
-  High:   'text-red-400 border border-red-500/30',
-  Medium: 'text-amber-400 border border-amber-500/30',
-  Low:    'text-emerald-400 border border-emerald-500/30',
-}
-const priorityBg = {
-  High:   'rgba(239,68,68,0.1)',
-  Medium: 'rgba(245,158,11,0.1)',
-  Low:    'rgba(16,185,129,0.1)',
-}
 
 const statusBg = {
   'En attente': 'rgba(245,158,11,0.1)',
@@ -33,6 +44,11 @@ const statusBorder = {
 }
 
 const NEEDS_AVAILABILITY = ['room']
+
+const parseImages = url => {
+  if (!url) return []
+  try { const p = JSON.parse(url); return Array.isArray(p) ? p : [url] } catch { return [url] }
+}
 
 
 const glassCard = {
@@ -136,22 +152,16 @@ function TicketCard({ ticket, lang, t, feedbacks, onFeedbackSubmit }) {
         </p>
       )}
 
-      <div className="flex justify-between items-center">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${priorityColors[ticket.priorite]}`}
-          style={{background:priorityBg[ticket.priorite]}}>
-          {tf(ticket.priorite, lang, PrioM)}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs" style={{color:'#60a5fa'}}>{ticket.tracking_code}</span>
-          <span className="text-xs" style={{color:'rgba(255,255,255,0.2)'}}>{new Date(ticket.created_at).toLocaleDateString()}</span>
-        </div>
+      <div className="flex justify-end items-center gap-2">
+        <span className="font-mono text-xs" style={{color:'#60a5fa'}}>{ticket.tracking_code}</span>
+        <span className="text-xs" style={{color:'rgba(255,255,255,0.2)'}}>{new Date(ticket.created_at).toLocaleDateString()}</span>
       </div>
 
-      {ticket.image_url && (
-        <img src={ticket.image_url} alt="ticket"
+      {parseImages(ticket.image_url).map((url, i) => (
+        <img key={i} src={url} alt={`ticket-${i}`}
           className="mt-2 w-full rounded-xl max-h-40 object-cover"
           onError={e => e.target.style.display = 'none'} />
-      )}
+      ))}
 
       {ticket.statut === 'Résolu' && (
         <FeedbackWidget
@@ -243,9 +253,16 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const [availability,      setAvailability]        = useState('')
   const [availabilityStart, setAvailabilityStart]   = useState('')
   const [availabilityEnd,   setAvailabilityEnd]     = useState('')
-  const [imageFile,         setImageFile]           = useState(null)
-  const [imagePreview,      setImagePreview]        = useState(null)
-  const imagePreviewRef = useRef(null)
+  const [imageFiles,    setImageFiles]    = useState([])
+  const [imagePreviews, setImagePreviews] = useState([])
+  const imageUrlsRef = useRef([])
+
+  // PWA install prompt
+  const deferredPromptRef = useRef(window.__installPrompt || null)
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+  const [showInstall,  setShowInstall]  = useState(() => !isStandalone && (!!window.__installPrompt || isIos))
+  const [showIosHint,  setShowIosHint]  = useState(false)
   const [message,           setMessage]             = useState('')
   const [submitting,        setSubmitting]          = useState(false)
   const [trackingCode,      setTrackingCode]        = useState('')
@@ -264,27 +281,24 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   // Notifications
   const [notifications, setNotifications] = useState([])
   const [showNotifs,    setShowNotifs]    = useState(false)
-  const notifRef = useRef(null)
+  const notifRef       = useRef(null)
+  const notifLoadedRef = useRef(false)   // skip sound on initial fetch
 
   const fetchNotifications = useCallback(async () => {
-    const { data: myTickets } = await supabase
-      .from('tickets')
-      .select('tracking_code')
-      .eq('nom', student['nom'])
-
-    if (!myTickets || myTickets.length === 0) return
-
-    const codes = myTickets.map(t => t.tracking_code)
-
     const { data } = await supabase
       .from('notifications')
       .select('*')
+      .eq('nom', student['nom'])
       .eq('type', 'status_update')
-      .in('tracking_code', codes)
       .order('created_at', { ascending: false })
       .limit(30)
-
-    if (data) setNotifications(data)
+    if (data) {
+      setNotifications(prev => {
+        if (notifLoadedRef.current && data.length > prev.length) playNotifSound()
+        notifLoadedRef.current = true
+        return data
+      })
+    }
   }, [student])
 
   const fetchTickets = useCallback(async () => {
@@ -298,21 +312,67 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     setLoadingTickets(false)
   }, [student])
 
-  // ── Realtime subscriptions ─────────────────────────────────────────────────
+  // ── Realtime subscriptions + polling fallback ──────────────────────────────
   useEffect(() => {
-    const loadNotifications = async () => {
-      await fetchNotifications()
-    }
-    loadNotifications()
+    fetchNotifications()
 
     const safeName = student['nom'].replace(/[^a-zA-Z0-9]/g, '_')
 
+    // localStorage key to track last-seen ticket statuses (bypasses RLS entirely)
+    const STATUSES_KEY = `rt_statuses_${student['nom']}`
+
+    const refreshAll = async () => {
+      const [{ data: td }, { data: fd }] = await Promise.all([
+        supabase.from('tickets').select('*').eq('nom', student['nom']).order('created_at', { ascending: false }),
+        supabase.from('feedback').select('*').eq('nom', student['nom']),
+      ])
+      if (td) {
+        // Detect status changes via localStorage (works even if RLS blocks notifications table)
+        try {
+          const stored = JSON.parse(localStorage.getItem(STATUSES_KEY) || 'null')
+          const newMap = {}
+          td.forEach(t => { newMap[t.id] = t.statut })
+          localStorage.setItem(STATUSES_KEY, JSON.stringify(newMap))
+          if (stored) {
+            const changed = td.filter(t => stored[t.id] && stored[t.id] !== t.statut)
+            if (changed.length > 0) {
+              const newNotifs = changed.map(t => ({
+                id: `local_${t.id}_${t.statut}`,
+                tracking_code: t.tracking_code,
+                nom: t.nom,
+                message_student: t.statut === 'Résolu'
+                  ? `Votre demande ${t.tracking_code} a été résolue`
+                  : `Votre demande ${t.tracking_code} est maintenant: ${t.statut}`,
+                type: 'status_update',
+                created_at: new Date().toISOString(),
+                read_by_student: false,
+              }))
+              setNotifications(prev => {
+                const existingIds = new Set(prev.map(n => String(n.id)))
+                const fresh = newNotifs.filter(n => !existingIds.has(n.id))
+                if (fresh.length > 0) playNotifSound()
+                return [...fresh, ...prev]
+              })
+            }
+          }
+        } catch { /* localStorage unavailable */ }
+
+        setTickets(td)
+        setTrackedTicket(prev => prev ? (td.find(t => t.id === prev.id) ?? prev) : prev)
+      }
+      if (fd) setFeedbacks(fd)
+      // Also try DB notifications (works if RLS allows anon reads)
+      await fetchNotifications()
+    }
+
+    // Realtime (works when Supabase has realtime enabled for these tables)
     const notifChannel = supabase
       .channel('student-notifs-' + safeName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
         const n = payload.new
         if (n.type === 'status_update' && n.nom === student['nom']) {
           setNotifications(prev => [n, ...prev])
+          playNotifSound()
         }
       })
       .subscribe()
@@ -339,16 +399,23 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
       })
       .subscribe()
 
+    // Guaranteed fallback: poll every 15s and on tab focus
+    const poll = setInterval(refreshAll, 15000)
+    const onFocus = () => refreshAll()
+    window.addEventListener('focus', onFocus)
+
     return () => {
       supabase.removeChannel(notifChannel)
       supabase.removeChannel(ticketChannel)
       supabase.removeChannel(feedbackChannel)
+      clearInterval(poll)
+      window.removeEventListener('focus', onFocus)
     }
   }, [student, fetchNotifications])
 
-  // Revoke object URL on unmount to prevent memory leak
+  // Revoke all preview object URLs on unmount
   useEffect(() => {
-    return () => { if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current) }
+    return () => { imageUrlsRef.current.forEach(u => URL.revokeObjectURL(u)) }
   }, [])
 
   // Close notif dropdown on outside click
@@ -358,7 +425,25 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
+  // PWA install prompt listener
+  useEffect(() => {
+    if (isStandalone) return
+    const onReady = () => { deferredPromptRef.current = window.__installPrompt; setShowInstall(true) }
+    window.addEventListener('installpromptready', onReady)
+    window.addEventListener('appinstalled', () => { setShowInstall(false); window.__installPrompt = null })
+    return () => window.removeEventListener('installpromptready', onReady)
+  }, [isStandalone])
+
   const unreadNotifs = notifications.filter(n => !n.read_by_student).length
+
+  const handleInstall = async () => {
+    if (isIos) { setShowIosHint(true); return }
+    if (!deferredPromptRef.current) return
+    deferredPromptRef.current.prompt()
+    const { outcome } = await deferredPromptRef.current.userChoice
+    if (outcome === 'accepted') setShowInstall(false)
+    deferredPromptRef.current = null
+  }
 
   const handleTabChange = async (nextView) => {
     setView(nextView)
@@ -368,44 +453,52 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const markNotifsRead = async () => {
     const unread = notifications.filter(n => !n.read_by_student)
     if (unread.length === 0) return
-    const ids = unread.map(n => n.id).filter(Boolean)
-    if (ids.length > 0) {
+    // Only send real DB IDs (skip local_* ones generated from localStorage detection)
+    const dbIds = unread.map(n => n.id).filter(id => id && !String(id).startsWith('local_'))
+    if (dbIds.length > 0) {
       try {
-        await supabase.from('notifications').update({ read_by_student: true }).in('id', ids)
-      } catch {
-        // Column may not exist — silently ignore, local state still updates
-      }
+        await supabase.from('notifications').update({ read_by_student: true }).in('id', dbIds)
+      } catch { /* ignore */ }
     }
     setNotifications(prev => prev.map(n => ({ ...n, read_by_student: true })))
   }
 
   // ── Form logic ───────────────────────────────────────────────────────────────
   const handleImageChange = e => {
-    const file = e.target.files[0]
-    if (!file) return
+    const files = Array.from(e.target.files)
+    if (!files.length) return
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(file.type)) {
-      setMessage(lang === 'ar' ? 'يرجى استخدام صور JPG أو PNG أو WEBP فقط.' : lang === 'fr' ? 'Veuillez utiliser uniquement des images JPG, PNG ou WEBP.' : 'Please use JPG, PNG or WEBP images only.')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage(lang === 'ar' ? 'حجم الصورة يجب أن يكون أقل من 5 ميغابايت.' : lang === 'fr' ? "La photo doit faire moins de 5 Mo." : 'Image must be under 5 MB.')
-      return
-    }
-    const url = URL.createObjectURL(file)
-    if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current)
-    imagePreviewRef.current = url
-    setImageFile(file)
-    setImagePreview(url)
+    const valid = files.filter(f => allowed.includes(f.type) && f.size <= 5 * 1024 * 1024)
+    const combined = [...imageFiles, ...valid].slice(0, 5)
+    imagePreviews.forEach(p => URL.revokeObjectURL(p.url))
+    const newPreviews = combined.map(f => ({ url: URL.createObjectURL(f), name: f.name }))
+    imageUrlsRef.current = newPreviews.map(p => p.url)
+    setImageFiles(combined)
+    setImagePreviews(newPreviews)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
-  const uploadImage = async (file, code) => {
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-    const path = `tickets/${code}.${ext}`
-    const { error } = await supabase.storage.from('ticket-images').upload(path, file, { upsert: true, contentType: file.type })
-    if (error) { console.error('Upload error:', error); return null }
-    const { data } = supabase.storage.from('ticket-images').getPublicUrl(path)
-    return data.publicUrl
+  const removeImage = i => {
+    URL.revokeObjectURL(imagePreviews[i].url)
+    const newPreviews = imagePreviews.filter((_, idx) => idx !== i)
+    imageUrlsRef.current = newPreviews.map(p => p.url)
+    setImagePreviews(newPreviews)
+    setImageFiles(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  const uploadImages = async (files, code) => {
+    const urls = []
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+      const { error } = await supabase.storage.from('ticket-images')
+        .upload(`tickets/${code}_${i + 1}.${ext}`, file, { upsert: true, contentType: file.type })
+      if (!error) {
+        const { data } = supabase.storage.from('ticket-images').getPublicUrl(`tickets/${code}_${i + 1}.${ext}`)
+        urls.push(data.publicUrl)
+      } else { console.error('Upload error:', error) }
+    }
+    return urls
   }
 
   const checkDuplicate = async () => {
@@ -457,7 +550,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
     const code = generateTrackingCode()
     let imageUrl = null
-    if (imageFile) imageUrl = await uploadImage(imageFile, code)
+    if (imageFiles.length > 0) {
+      const urls = await uploadImages(imageFiles, code)
+      if (urls.length > 0) imageUrl = JSON.stringify(urls)
+    }
 
     const finalAvailability = isNightShift ? nightShiftLabel[lang]
       : availabilityStart && availabilityEnd ? `${availabilityStart} → ${availabilityEnd}` : null
@@ -488,6 +584,8 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
         message_admin:  `${student['nom']} — ${problemType}`,
         type:           'new_ticket',
         read_by_admin:  false,
+        read_by_student:false,
+        residence_id:   student['residence_id'] || null,
       }])
     }
 
@@ -499,9 +597,10 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
     setLocation(''); setProblemType(''); setPriority('')
     setDescription(''); setAvailability(''); setExactLocation('')
     setAvailabilityStart(''); setAvailabilityEnd('')
-    setImageFile(null)
-    if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null }
-    setImagePreview(null)
+    imagePreviews.forEach(p => URL.revokeObjectURL(p.url))
+    setImageFiles([])
+    setImagePreviews([])
+    imageUrlsRef.current = []
   }
 
   const handleTrack = async () => {
@@ -562,7 +661,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   }
 
   const notifPanel = showNotifs && (
-    <div ref={notifRef} className="fixed top-16 right-4 w-72 rounded-xl z-50 overflow-hidden"
+    <div onMouseDown={e => e.stopPropagation()} className="fixed top-16 right-4 w-72 rounded-xl z-50 overflow-hidden"
       style={{background:'#0d1117',border:'1px solid rgba(255,255,255,0.1)',boxShadow:'0 16px 48px rgba(0,0,0,0.7)'}}>
       <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
         <span className="font-semibold text-sm" style={{color:'#f0f6ff'}}>
@@ -657,12 +756,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                     <p className="ml-5 text-xs" style={{color:'rgba(255,255,255,0.3)'}}>{trackedTicket.exact_location}</p>
                   )}
                   <p>🔧 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.typeLabel}:</span> {tf(trackedTicket.problem_type, lang, PM)}</p>
-                  <p>⚡ <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.priorityLabel}:</span>
-                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${priorityColors[trackedTicket.priorite]}`}
-                      style={{background:priorityBg[trackedTicket.priorite]}}>
-                      {tf(trackedTicket.priorite, lang, PrioM)}
-                    </span>
-                  </p>
                   <p>📝 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.descLabel}:</span> {trackedTicket.description}</p>
                   {trackedTicket.availability && (
                     <p>🕐 <span className="font-medium" style={{color:'rgba(255,255,255,0.6)'}}>{t.availabilityLabel}:</span> {trackedTicket.availability}</p>
@@ -684,11 +777,11 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
                   </div>
                 )}
 
-                {trackedTicket.image_url && (
-                  <img src={trackedTicket.image_url} alt="ticket"
+                {parseImages(trackedTicket.image_url).map((url, i) => (
+                  <img key={i} src={url} alt={`ticket-${i}`}
                     className="w-full rounded-xl mt-2 max-h-48 object-cover"
                     onError={e => e.target.style.display = 'none'} />
-                )}
+                ))}
 
                 {trackedTicket.statut === 'Résolu' && (
                   <FeedbackWidget
@@ -756,9 +849,43 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
   const isHighPriority    = priority === 'High'
   const timeError         = availabilityStart && availabilityEnd && availabilityEnd <= availabilityStart
 
+  const iosHintModal = showIosHint && (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" style={{background:'rgba(0,0,0,0.6)'}}>
+      <div className="w-full max-w-sm rounded-2xl p-6 text-center" style={{background:'#0d1117',border:'1px solid rgba(255,255,255,0.1)'}}>
+        <div className="text-3xl mb-3">📱</div>
+        <p className="text-sm font-medium mb-2" style={{color:'#f0f6ff'}}>{t.install}</p>
+        <p className="text-xs mb-5" style={{color:'rgba(255,255,255,0.5)'}}>{t.installIos}</p>
+        <button onClick={() => setShowIosHint(false)}
+          className="w-full py-2.5 rounded-xl text-sm font-medium"
+          style={{background:'rgba(59,130,246,0.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,0.3)'}}>
+          {t.installDone}
+        </button>
+      </div>
+    </div>
+  )
+
+  const installBanner = showInstall && !isStandalone && (
+    <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
+      style={{background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.2)'}}>
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <polyline points="8 13 12 17 16 13"/>
+        <line x1="12" y1="7" x2="12" y2="17"/>
+      </svg>
+      <p className="flex-1 text-xs" style={{color:'rgba(255,255,255,0.6)'}}>{t.install}</p>
+      <button onClick={handleInstall}
+        className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-all"
+        style={{background:'rgba(59,130,246,0.25)',color:'#93c5fd',border:'1px solid rgba(59,130,246,0.35)'}}>
+        {lang==='ar'?'إضافة':lang==='fr'?'Installer':'Install'}
+      </button>
+      <button onClick={() => setShowInstall(false)} className="text-xs shrink-0" style={{color:'rgba(255,255,255,0.25)'}}>✕</button>
+    </div>
+  )
+
   return (
     <div dir={t.dir} className="min-h-screen pb-20" style={{background:'linear-gradient(135deg, #080b12 0%, #0a0e1a 50%, #08101a 100%)'}}>
       {notifPanel}
+      {iosHintModal}
       <div className="max-w-lg mx-auto p-4">
         <Header
           t={t}
@@ -773,6 +900,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
           notifRef={notifRef}
           onLogout={onLogout}
         />
+        {installBanner}
         <div className="rounded-xl p-6 space-y-5" style={glassCard}>
 
           {/* Location */}
@@ -840,20 +968,6 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
             </div>
           )}
 
-          {/* Priority (auto) */}
-          {priority && (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{color:'rgba(255,255,255,0.3)'}}>{t.priorityAuto}:</span>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${priorityColors[priority]}`}
-                  style={{background:priorityBg[priority]}}>
-                  {tf(priority, lang, PrioM)}
-                </span>
-              </div>
-              {isHighPriority && <p className="text-xs" style={{color:'#f87171'}}>{t.priorityHighNote}</p>}
-            </div>
-          )}
-
           {/* Description */}
           <div>
             <div className="flex justify-between items-center mb-1">
@@ -914,27 +1028,31 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
           {/* Image */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>{t.image}</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{color:'rgba(255,255,255,0.4)'}}>
+              {t.image}{imageFiles.length > 0 ? ` (${imageFiles.length}/5)` : ''}
+            </label>
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-              ref={fileRef} className="hidden" onChange={handleImageChange} />
+              ref={fileRef} multiple className="hidden" onChange={handleImageChange} />
             <button onClick={() => fileRef.current.click()}
               className="w-full border-2 border-dashed rounded-xl p-4 text-sm transition-all hover:border-blue-500/30"
               style={{borderColor:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.02)'}}>
-              {imageFile ? `${t.imageSelected}: ${imageFile.name}` : t.imageBtn}
+              {imageFiles.length > 0
+                ? `${imageFiles.length} ${lang==='ar'?'صورة مختارة':lang==='fr'?'photo(s) sélectionnée(s)':'photo(s) selected'}`
+                : t.imageBtn}
             </button>
             <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.2)'}}>
-              {lang === 'ar' ? 'JPG، PNG، WEBP — بحد أقصى 5 ميغابايت' : lang === 'fr' ? 'JPG, PNG, WEBP — max 5 Mo' : 'JPG, PNG, WEBP — max 5 MB'}
+              {lang === 'ar' ? 'JPG، PNG، WEBP — 5 ميغابايت لكل صورة — حد 5 صور' : lang === 'fr' ? 'JPG, PNG, WEBP — 5 Mo max par photo — 5 photos max' : 'JPG, PNG, WEBP — 5 MB each — max 5 photos'}
             </p>
-            {imagePreview && (
-              <div className="mt-2 relative">
-                <img src={imagePreview} alt="preview" className="w-full rounded-xl max-h-40 object-cover" />
-                <button
-                  type="button"
-                  onClick={() => { if (imagePreviewRef.current) { URL.revokeObjectURL(imagePreviewRef.current); imagePreviewRef.current = null } setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = '' }}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                  style={{background:'rgba(0,0,0,0.6)',color:'#fff'}}>
-                  ✕
-                </button>
+            {imagePreviews.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {imagePreviews.map((p, i) => (
+                  <div key={i} className="relative">
+                    <img src={p.url} alt="preview" className="w-full rounded-lg object-cover" style={{height:80}} />
+                    <button type="button" onClick={() => removeImage(i)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{background:'rgba(0,0,0,0.65)',color:'#fff'}}>✕</button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

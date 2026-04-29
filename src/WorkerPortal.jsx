@@ -226,9 +226,27 @@ export default function WorkerPortal({ worker, onLogout }) {
     if (!error) {
       setTickets(prev => sortTickets(prev.map(t => t.id === ticketId ? { ...t, ...upd } : t)))
       setSelTicket(prev => prev?.id === ticketId ? { ...prev, ...upd } : prev)
+      // Notify the student
+      const ticket = tickets.find(t => t.id === ticketId)
+      if (ticket) {
+        const msg = status === 'Résolu'
+          ? `Votre demande ${ticket.tracking_code} a été résolue`
+          : `Votre demande ${ticket.tracking_code} est en cours de traitement`
+        await supabase.from('notifications').insert([{
+          ticket_id:       ticketId,
+          tracking_code:   ticket.tracking_code,
+          nom:             ticket.nom,
+          message_student: msg,
+          type:            'status_update',
+          read_by_admin:   true,
+          read_by_student: false,
+          residence_id:    ticket.residence_id || null,
+          triggered_by_admin: worker.id || null,
+        }])
+      }
     }
     setUpdating(false)
-  }, [])
+  }, [tickets, worker])
 
   const saveAssignedWorkers = useCallback(async (ticketId, selectedWorkers) => {
     const aw = JSON.stringify(selectedWorkers)

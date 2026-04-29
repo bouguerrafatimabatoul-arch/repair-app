@@ -4,6 +4,26 @@ import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'
 import { PM, LM, ALL_PROBLEM_TYPES, ALL_LOCATIONS, tf } from './constants'
 import { generateTrackingCode, assignPriority } from './utils'
 
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.connect(ctx.destination)
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+    ;[880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      osc.connect(gain)
+      osc.start(ctx.currentTime + i * 0.12)
+      osc.stop(ctx.currentTime + 0.7)
+    })
+    setTimeout(() => ctx.close(), 1000)
+  } catch {}
+}
+
 // ─── SVG icons (no emoji) ─────────────────────────────────────────────────────
 const IC = {
   tickets:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
@@ -73,7 +93,7 @@ const T = {
     escalateLowLabel:'Low → Medium after (hours)',escalateMediumLabel:'Medium → High after (hours)',
     tableColsTitle:'Visible columns',ticketsPerPageLabel:'Tickets per page',
     save:'Save settings',saved:'Saved!',
-    printAll:'Print all',printFiltered:'Print filtered',
+    printAll:'Print all',printFiltered:'Print filtered',printTicket:'Print ticket',
     addWorkerTitle:'Add new worker',addWorkerName:'Last name',addWorkerFirst:'First name',
     addWorkerPhone:'Phone',addWorkerGrade:'Grade',addWorkerBtn:'Add worker',
     addWorkerJobTitle:'Job title',addWorkerSaved:'Worker added!',addWorkerError:'Error adding worker.',
@@ -129,7 +149,7 @@ const T = {
     escalateLowLabel:'Faible → Moyenne après (heures)',escalateMediumLabel:'Moyenne → Haute après (heures)',
     tableColsTitle:'Colonnes visibles',ticketsPerPageLabel:'Tickets par page',
     save:'Enregistrer',saved:'Sauvegardé !',
-    printAll:'Imprimer tout',printFiltered:'Imprimer filtré',
+    printAll:'Imprimer tout',printFiltered:'Imprimer filtré',printTicket:'Imprimer le ticket',
     addWorkerTitle:'Ajouter un ouvrier',addWorkerName:'Nom',addWorkerFirst:'Prénom',
     addWorkerPhone:'Téléphone',addWorkerGrade:'Grade',addWorkerBtn:'Ajouter',
     addWorkerSaved:'Ouvrier ajouté !',addWorkerError:"Erreur lors de l'ajout.",
@@ -183,7 +203,7 @@ const T = {
     escalateLowLabel:'منخفضة → متوسطة بعد (ساعة)',escalateMediumLabel:'متوسطة → عالية بعد (ساعة)',
     tableColsTitle:'الأعمدة المرئية',ticketsPerPageLabel:'طلبات لكل صفحة',
     save:'حفظ الإعدادات',saved:'تم الحفظ!',
-    printAll:'طباعة الكل',printFiltered:'طباعة المفلتر',
+    printAll:'طباعة الكل',printFiltered:'طباعة المفلتر',printTicket:'طباعة الطلب',
     addWorkerTitle:'إضافة عامل جديد',addWorkerName:'اللقب',addWorkerFirst:'الاسم',
     addWorkerPhone:'الهاتف',addWorkerGrade:'الرتبة',addWorkerBtn:'إضافة',
     addWorkerJobTitle:'المسمى الوظيفي',addWorkerSaved:'تم إضافة العامل!',addWorkerError:'خطأ في الإضافة.',
@@ -224,6 +244,10 @@ const DEFAULT_SETTINGS = {
 const SC = {'En attente':'bg-gray-100 text-gray-600','En cours':'bg-blue-100 text-blue-700','Résolu':'bg-green-100 text-green-700'}
 const PC = {High:'bg-red-100 text-red-700',Medium:'bg-yellow-100 text-yellow-700',Low:'bg-green-100 text-green-700'}
 const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-yellow-400',Low:'border-l-[3px] border-green-400'}
+const parseImages = url => {
+  if (!url) return []
+  try { const p = JSON.parse(url); return Array.isArray(p) ? p : [url] } catch { return [url] }
+}
 
 
 // ─── Mini charts ───────────────────────────────────────────────────────────────
@@ -722,11 +746,12 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
 }
 
 // ─── View-only Ticket modal (with Edit button) ─────────────────────────────────
-function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,isReadOnly,onEdit}){
+function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSave,updating,isReadOnly,onEdit,onPrint}){
   const [note,setNote]=useState(ticket.admin_note||'')
   const tools=ticket.tools_used||''
   const [sel,setSel]=useState(()=>{try{return JSON.parse(ticket.assigned_workers||'[]')}catch{return[]}})
   const [saving,setSaving]=useState(false)
+  const [zoomImg,setZoomImg]=useState(null)
   const fb=feedbacks.find(f=>f.ticket_id===ticket.id)
   const escalated=ep!==ticket.priorite
   const handleSave=async()=>{setSaving(true);await onSave(ticket.id,note,JSON.stringify(sel),tools);setSaving(false)}
@@ -746,14 +771,21 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
               className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-600 text-xs font-medium border border-gray-200 transition-colors">
               ✏️ {lang==='ar'?'تعديل':lang==='fr'?'Modifier':'Edit'}
             </button>}
+            <button onClick={onPrint}
+              className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-emerald-50 hover:text-emerald-600 text-gray-600 text-xs font-medium border border-gray-200 transition-colors flex items-center gap-1">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              {txt.printTicket||'Print'}
+            </button>
             <button onClick={onClose} className="text-gray-300 hover:text-gray-600 text-xl ml-1">✕</button>
           </div>
         </div>
         <div className="px-6 py-5 space-y-5">
+          {ep==='High'&&(
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs px-3 py-1 rounded-full font-medium ${PC[ep]}`}>⚡ {txt.priorities[ep]}</span>
             {escalated&&<span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-full border border-orange-200">↑ {txt.escalated} ({txt.originalPriority}: {txt.priorities[ticket.priorite]})</span>}
           </div>
+          )}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-400 mb-1">{txt.location}</p><p className="font-medium text-gray-700">{tf(ticket.location,lang,LM)}</p></div>
             <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-400 mb-1">{txt.type}</p><p className="font-medium text-gray-700">{tf(ticket.problem_type,lang,PM)}</p></div>
@@ -763,7 +795,27 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
           {ticket.exact_location&&<div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-400 mb-1">{txt.exactLocation}</p><p className="text-sm text-blue-700">{ticket.exact_location}</p></div>}
           <div><p className="text-xs text-gray-400 mb-1 font-medium">{txt.description}</p><p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 leading-relaxed">{ticket.description}</p></div>
           {ticket.availability&&<p className="text-sm text-gray-600"><span className="font-medium">{txt.availability}:</span> {ticket.availability}</p>}
-          {ticket.image_url&&<div><p className="text-xs text-gray-400 mb-1 font-medium">{txt.image}</p><img src={ticket.image_url} alt="ticket" className="w-full rounded-xl max-h-48 object-cover" onError={e=>e.target.style.display='none'}/></div>}
+          {parseImages(ticket.image_url).length>0&&(
+            <div>
+              <p className="text-xs text-gray-400 mb-2 font-medium">{txt.image}</p>
+              <div className={`grid gap-2 ${parseImages(ticket.image_url).length===1?'grid-cols-1':'grid-cols-2'}`}>
+                {parseImages(ticket.image_url).map((url,i)=>(
+                  <div key={i} className="relative group cursor-zoom-in rounded-xl overflow-hidden" onClick={()=>setZoomImg(url)}>
+                    <img src={url} alt={`photo-${i+1}`} className="w-full object-cover rounded-xl transition-transform group-hover:scale-105" style={{maxHeight:parseImages(ticket.image_url).length===1?192:120}} onError={e=>e.target.parentElement.style.display='none'}/>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm0 0l4 4"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {zoomImg&&(
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)'}} onClick={()=>setZoomImg(null)}>
+              <button className="absolute top-4 right-4 text-white text-3xl font-light leading-none hover:text-gray-300 transition-colors" onClick={()=>setZoomImg(null)}>✕</button>
+              <img src={zoomImg} alt="zoom" className="max-w-full max-h-full rounded-xl shadow-2xl object-contain" style={{maxHeight:'90vh',maxWidth:'90vw'}} onClick={e=>e.stopPropagation()}/>
+            </div>
+          )}
           {fb&&<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"><p className="text-xs font-medium text-yellow-700 mb-1">{txt.feedback}</p><p className="text-yellow-500 text-xl">{'★'.repeat(fb.rating)}{'☆'.repeat(5-fb.rating)}</p>{fb.note&&<p className="text-xs text-gray-600 mt-1 italic">"{fb.note}"</p>}</div>}
           {!isReadOnly&&<div><label className="block text-xs font-medium text-gray-500 mb-1.5">{txt.assignWorkers}</label><WorkerPicker workers={workers} selected={sel} onChange={setSel} txt={txt}/></div>}
           {!isReadOnly&&<div>
@@ -1271,7 +1323,7 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-xs text-blue-500 shrink-0">{t.tracking_code}</span>
                       <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${PC[t.ep||t.priorite]}`}>{txt.priorities[t.ep||t.priorite]}</span>
+                      {(t.ep||t.priorite)==='High'&&<span className={`px-1.5 py-0.5 rounded text-xs font-medium ${PC[t.ep||t.priorite]}`}>{txt.priorities[t.ep||t.priorite]}</span>}
                     </div>
                     <p className="text-sm font-medium text-gray-700 dark:text-slate-200 truncate">{t.nom}</p>
                     <div className="flex items-center justify-between mt-0.5">
@@ -1633,7 +1685,7 @@ export default function Dashboard({admin,onLogout}){
   const [tickets,setTickets]=useState([])
   const [workers,setWorkers]=useState([])
   const [feedbacks,setFeedbacks]=useState([])
-  const [lastRead,setLastRead]=useState(()=>{try{return parseInt(localStorage.getItem('notifRead_'+admin.id)||'0')}catch{return 0}})
+  const [adminNotifs,setAdminNotifs]=useState([])
   const [loading,setLoading]=useState(true)
   const [selTicket,setSelTicket]=useState(null)
   const [editTicket,setEditTicket]=useState(null)   // ← NEW: ticket being edited
@@ -1658,6 +1710,14 @@ export default function Dashboard({admin,onLogout}){
     document.documentElement.classList.toggle('dark',darkMode)
     try{localStorage.setItem('dm',darkMode?'1':'0')}catch{/* ignore storage write errors */}
   },[darkMode])
+
+  // Play sound when a new admin notification arrives
+  const prevNotifCount=useRef(0)
+  useEffect(()=>{
+    if(adminNotifs.length>prevNotifCount.current&&prevNotifCount.current>=0)
+      playNotifSound()
+    prevNotifCount.current=adminNotifs.length
+  },[adminNotifs])
   const [toasts,setToasts]=useState([])
   const [search,setSearch]=useState('')
   const [page,setPage]=useState(1)
@@ -1697,6 +1757,12 @@ export default function Dashboard({admin,onLogout}){
       if(td)setTickets(td);if(wd)setWorkers(wd);setFeedbacks(fd)
       if(mRes.data)setMessages(mRes.data);if(aRes.data)setAllAdmins(aRes.data)
       if(nsRes.data)setNightShiftIds(new Set(nsRes.data.map(r=>r.worker_id)))
+      // Load unread new-ticket notifications for the bell badge
+      // Include residence_id=null rows (older data before residence_id was added to inserts)
+      let nq=supabase.from('notifications').select('*').eq('type','new_ticket').eq('read_by_admin',false).order('created_at',{ascending:false})
+      if(!isGlobal&&admin.residence_id)nq=nq.or(`residence_id.eq.${admin.residence_id},residence_id.is.null`)
+      const{data:nd}=await nq
+      if(nd){setAdminNotifs(nd);prevNotifCount.current=nd.length}
       setLoading(false)
     }
     loadInitial()
@@ -1733,20 +1799,33 @@ export default function Dashboard({admin,onLogout}){
       .on('postgres_changes',{event:'DELETE',schema:'public',table:'night_shift_assignments'},p=>{
         setNightShiftIds(prev=>{const s=new Set(prev);s.delete(p.old.worker_id);return s})
       })
-      .subscribe(async(status)=>{
-        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-          // realtime failed — fall back to polling every 30s
-          const poll=setInterval(async()=>{
-            let q=supabase.from('tickets').select('*').order('created_at',{ascending:false})
-            if(!isGlobal&&admin.residence_id)q=q.eq('residence_id',admin.residence_id)
-            const{data}=await q
-            if(data)setTickets(data)
-          },30000)
-          timers['poll']=poll
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},p=>{
+        if(p.new.type==='new_ticket'){
+          if(isGlobal||!admin.residence_id||!p.new.residence_id||p.new.residence_id===admin.residence_id)
+            setAdminNotifs(prev=>[p.new,...prev])
         }
       })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications'},p=>{
+        if(p.new.read_by_admin)
+          setAdminNotifs(prev=>prev.filter(n=>n.id!==p.new.id))
+      })
+      .subscribe()
+    // Always poll every 10s — guarantees freshness even if realtime isn't configured
+    const fetchAll=async()=>{
+      let q=supabase.from('tickets').select('*').order('created_at',{ascending:false})
+      if(!isGlobal&&admin.residence_id)q=q.eq('residence_id',admin.residence_id)
+      let nq=supabase.from('notifications').select('*').eq('type','new_ticket').eq('read_by_admin',false).order('created_at',{ascending:false})
+      if(!isGlobal&&admin.residence_id)nq=nq.or(`residence_id.eq.${admin.residence_id},residence_id.is.null`)
+      const[{data},{data:nd}]=await Promise.all([q,nq])
+      if(data)setTickets(data)
+      if(nd)setAdminNotifs(nd)
+    }
+    timers['poll']=setInterval(fetchAll,10000)
+    const onFocus=()=>fetchAll()
+    window.addEventListener('focus',onFocus)
     return()=>{
       supabase.removeChannel(ch)
+      window.removeEventListener('focus',onFocus)
       Object.values(timers).forEach(id=>typeof id==='number'?clearTimeout(id):clearInterval(id))
     }
   },[addToast])
@@ -1765,8 +1844,26 @@ export default function Dashboard({admin,onLogout}){
     if(!error){
       setTickets(prev=>prev.map(t=>t.id===id?{...t,...upd}:t))
       setSelTicket(prev=>prev?.id===id?{...prev,...upd}:prev)
-      const t=tickets.find(t=>t.id===id)
-      if(t) supabase.from('notifications').insert([{ticket_id:id,tracking_code:t.tracking_code,nom:t.nom,message_student:`Your ticket ${t.tracking_code} is now: ${s}`,type:'status_update',read_by_admin:true}])
+      const t=tickets.find(tk=>tk.id===id)
+      if(t){
+        const msg=s==='Résolu'
+          ?(lang==='ar'?`تم حل طلبك ${t.tracking_code}`:`Votre demande ${t.tracking_code} a été résolue`)
+          :s==='En cours'
+          ?(lang==='ar'?`طلبك ${t.tracking_code} قيد المعالجة`:`Votre demande ${t.tracking_code} est en cours de traitement`)
+          :(lang==='ar'?`تم تحديث طلبك ${t.tracking_code}`:`Votre demande ${t.tracking_code} a été mise à jour`)
+        const {error:ne}=await supabase.from('notifications').insert([{
+          ticket_id:     id,
+          tracking_code: t.tracking_code,
+          nom:           t.nom,
+          message_student: msg,
+          type:          'status_update',
+          read_by_admin: true,
+          read_by_student: false,
+          residence_id:  t.residence_id||null,
+          triggered_by_admin: admin.id||null,
+        }])
+        if(ne) console.error('Notification insert error:',ne)
+      }
     }
     setUpdating(false)
   }
@@ -1775,10 +1872,11 @@ export default function Dashboard({admin,onLogout}){
     setTickets(prev=>prev.map(t=>t.id===id?{...t,admin_note:note,assigned_workers:workers,tools_used:tools}:t))
     setSelTicket(prev=>prev?{...prev,admin_note:note,assigned_workers:workers,tools_used:tools}:prev)
   }
-  const markAllRead=()=>{
-    const now=Date.now()
-    setLastRead(now)
-    try{localStorage.setItem('notifRead_'+admin.id,String(now))}catch{}
+  const markAllRead=async()=>{
+    if(adminNotifs.length===0)return
+    const ids=adminNotifs.map(n=>n.id)
+    setAdminNotifs([])
+    await supabase.from('notifications').update({read_by_admin:true}).in('id',ids)
   }
 
   const toggleNightShift=async(workerId)=>{
@@ -1838,79 +1936,71 @@ export default function Dashboard({admin,onLogout}){
     const dir  = isAr ? 'rtl' : 'ltr'
     const locale = isAr ? 'ar-DZ' : isFr ? 'fr-FR' : 'en-US'
     const today = new Date().toLocaleDateString(locale, { year:'numeric', month:'long', day:'numeric' })
-    const residenceName = data.find(t=>t.residence)?.residence || data.find(t=>t.pavillon)?.pavillon || '—'
-
-    const statusMap = isAr
-      ? {'En attente':'قيد الانتظار','En cours':'قيد المعالجة','Résolu':'تم الحل'}
-      : isFr
-        ? {'En attente':'En attente','En cours':'En cours','Résolu':'Résolu'}
-        : {'En attente':'Pending','En cours':'In Progress','Résolu':'Resolved'}
-    const priorityMap = isAr
-      ? {High:'عالية',Medium:'متوسطة',Low:'منخفضة',Urgent:'عاجل'}
-      : isFr
-        ? {High:'Haute',Medium:'Moyenne',Low:'Faible',Urgent:'Urgent'}
-        : {High:'High',Medium:'Medium',Low:'Low',Urgent:'Urgent'}
+    const residenceName = data.find(t=>t.residence)?.residence || '—'
 
     const L = isAr ? {
       title:'سجل طلبات الصيانة', org:'RESITECH', residence:'الإقامة الجامعية',
       date:'التاريخ', ref:'المرجع', total:'المجموع',
-      col:['#','اسم الطالب','التاريخ','نوع المشكلة','الموقع','الأولوية','الحالة','ملاحظات'],
+      col:['#','المرجع','الطالب','الغرفة / الجناح','التاريخ','نوع المشكلة','الموقع'],
       sigLeft:'إمضاء مدير الإقامة', sigRight:'إمضاء رئيس مصلحة الصيانة', generated:'وثيقة صادرة عن منصة RESITECH',
     } : isFr ? {
       title:'Registre des demandes de maintenance', org:'RESITECH', residence:'Résidence',
       date:'Date', ref:'Référence', total:'Total',
-      col:['N°','Étudiant','Date','Type de problème','Emplacement','Priorité','Statut','Notes'],
+      col:['N°','Code','Étudiant','Chambre / Pav.','Date','Type de problème','Emplacement'],
       sigLeft:'Signature du directeur de résidence', sigRight:'Signature du chef de service technique', generated:'Document généré par RESITECH',
     } : {
       title:'Maintenance Request Log', org:'RESITECH', residence:'Residence',
       date:'Date', ref:'Reference', total:'Total',
-      col:['#','Student','Date','Problem Type','Location','Priority','Status','Notes'],
+      col:['#','Code','Student','Room / Pav.','Date','Problem Type','Location'],
       sigLeft:'Residence Director Signature', sigRight:'Technical Service Manager Signature', generated:'Document generated by RESITECH',
     }
 
     const ref = `RT-${new Date().getFullYear()}-${String(data.length).padStart(4,'0')}`
+    const tdA = `style="text-align:${dir==='rtl'?'right':'left'};padding-${dir==='rtl'?'right':'left'}:6px"`
 
     const rows = data.map((t,i) => `<tr>
       <td>${String(i+1).padStart(2,'0')}</td>
-      <td style="text-align:${dir==='rtl'?'right':'left'};padding-${dir==='rtl'?'right':'left'}:8px">${t.nom||''}</td>
-      <td>${new Date(t.created_at).toLocaleDateString(locale,{year:'numeric',month:'2-digit',day:'2-digit'})}</td>
-      <td>${t.problem_type||''}</td>
-      <td>${t.exact_location||t.residence||t.chambre||''}</td>
-      <td>${priorityMap[t.priorite]||t.priorite||''}</td>
-      <td>${statusMap[t.statut]||t.statut||''}</td>
-      <td style="font-size:8px;color:#555">${t.admin_note||''}</td>
+      <td style="font-family:monospace;font-size:7.5px;color:#1d4ed8">${t.tracking_code||''}</td>
+      <td ${tdA}>${t.nom||''}</td>
+      <td>${t.chambre||''}${t.pavillon?` · ${t.pavillon}`:''}</td>
+      <td>${new Date(t.created_at).toLocaleDateString(locale,{year:'2-digit',month:'2-digit',day:'2-digit'})}</td>
+      <td ${tdA}>${t.problem_type||''}</td>
+      <td ${tdA}>${t.exact_location||''}</td>
     </tr>`).join('')
 
     const html = `<!DOCTYPE html><html dir="${dir}" lang="${lang}"><head><meta charset="UTF-8"/>
     <title>${L.title}</title>
     <style>
-      @page{size:A4 landscape;margin:14mm 12mm}
+      @page{size:A4 portrait;margin:14mm 14mm}
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;direction:${dir};color:#111;background:#fff}
-      /* ── Header ── */
-      .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:2px solid #1e293b;margin-bottom:14px}
-      .org-block .org-name{font-size:20px;font-weight:700;letter-spacing:1px;color:#1e293b}
-      .org-block .org-sub{font-size:9px;color:#64748b;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
-      .meta-block{text-align:${dir==='rtl'?'left':'right'};font-size:9.5px;color:#374151;line-height:1.9}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:8.5px;direction:${dir};color:#111;background:#fff}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:2px solid #1e293b;margin-bottom:12px}
+      .org-name{font-size:18px;font-weight:700;letter-spacing:1px;color:#1e293b}
+      .org-sub{font-size:8px;color:#64748b;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
+      .meta-block{text-align:${dir==='rtl'?'left':'right'};font-size:8.5px;color:#374151;line-height:2}
       .meta-block strong{color:#1e293b}
-      /* ── Title bar ── */
-      .doc-title{background:#1e293b;color:#fff;text-align:center;padding:8px 0;font-size:13px;font-weight:600;letter-spacing:.5px;margin-bottom:14px}
-      /* ── Table ── */
-      table{width:100%;border-collapse:collapse;margin-bottom:16px}
-      thead th{background:#1e293b;color:#fff;padding:6px 5px;text-align:center;font-size:9px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
-      tbody td{padding:5px;text-align:center;border-bottom:1px solid #e2e8f0;font-size:9px;vertical-align:middle}
+      .doc-title{background:#1e293b;color:#fff;text-align:center;padding:7px 0;font-size:11px;font-weight:600;letter-spacing:.5px;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;margin-bottom:14px}
+      colgroup .c-num{width:6%}
+      colgroup .c-code{width:11%}
+      colgroup .c-name{width:21%}
+      colgroup .c-room{width:13%}
+      colgroup .c-date{width:11%}
+      colgroup .c-type{width:19%}
+      colgroup .c-loc{width:19%}
+      thead th{background:#1e293b;color:#fff;padding:5px 4px;text-align:center;font-size:7.5px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+      tbody td{padding:4px;text-align:center;border-bottom:1px solid #e2e8f0;font-size:7.5px;vertical-align:middle}
       tbody tr:nth-child(even){background:#f8fafc}
       tbody tr:last-child td{border-bottom:2px solid #1e293b}
-      /* ── Footer ── */
-      .footer{display:flex;justify-content:space-between;margin-top:20px;gap:24px}
-      .sig-block{flex:1;font-size:10px;color:#374151}
-      .sig-label{font-weight:600;margin-bottom:40px;color:#1e293b}
-      .sig-line{border-top:1px solid #94a3b8;padding-top:4px;color:#94a3b8;font-size:8.5px}
-      .footer-note{text-align:center;margin-top:20px;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px}
+      .footer{display:flex;justify-content:space-between;margin-top:24px;gap:20px}
+      .sig-block{flex:1}
+      .sig-label{font-weight:600;font-size:8.5px;margin-bottom:32px;color:#1e293b}
+      .sig-line{border-top:1px solid #94a3b8;padding-top:3px;color:#94a3b8;font-size:7.5px}
+      .footer-note{text-align:center;margin-top:14px;font-size:7px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:6px}
       @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>
     <div class="header">
-      <div class="org-block">
+      <div>
         <div class="org-name">${L.org}</div>
         <div class="org-sub">${L.residence} — ${residenceName}</div>
       </div>
@@ -1922,6 +2012,10 @@ export default function Dashboard({admin,onLogout}){
     </div>
     <div class="doc-title">${L.title}</div>
     <table>
+      <colgroup>
+        <col class="c-num"/><col class="c-code"/><col class="c-name"/><col class="c-room"/>
+        <col class="c-date"/><col class="c-type"/><col class="c-loc"/>
+      </colgroup>
       <thead><tr>${L.col.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1939,6 +2033,155 @@ export default function Dashboard({admin,onLogout}){
     <script>window.onload=()=>window.print()</script>
     </body></html>`
     const w=window.open('','_blank');w.document.write(html);w.document.close();setShowExport(false)
+  }
+
+  const handlePrintSingle=(ticket)=>{
+    const isAr = lang === 'ar'
+    const isFr = lang === 'fr'
+    const dir  = isAr ? 'rtl' : 'ltr'
+    const locale = isAr ? 'ar-DZ' : isFr ? 'fr-FR' : 'en-US'
+    const today = new Date().toLocaleDateString(locale, { year:'numeric', month:'long', day:'numeric' })
+
+    const L = isAr ? {
+      title:'بطاقة طلب صيانة', org:'RESITECH',
+      code:'رقم المرجع', submitted:'تاريخ التقديم', student:'الطالب',
+      room:'الغرفة', pavilion:'الجناح', residence:'الإقامة',
+      location:'الموقع', exactLocation:'الموقع الدقيق',
+      type:'نوع المشكلة', description:'الوصف', availability:'وقت التوفر',
+      resolvedOn:'تاريخ الحل',
+      worker:'العامل المكلف', remarque:'ملاحظة العامل',
+      sigWorker:'إمضاء العامل', sigChef:'إمضاء رئيس مصلحة الصيانة',
+      generated:'وثيقة صادرة عن منصة RESITECH',
+    } : isFr ? {
+      title:'Bon de demande de maintenance', org:'RESITECH',
+      code:'Code de suivi', submitted:'Date de soumission', student:'Étudiant(e)',
+      room:'Chambre', pavilion:'Pavillon', residence:'Résidence',
+      location:'Emplacement', exactLocation:'Lieu précis',
+      type:'Type de problème', description:'Description', availability:'Disponibilité',
+      resolvedOn:'Résolu le',
+      worker:'Ouvrier assigné', remarque:"Remarque de l'ouvrier",
+      sigWorker:"Signature de l'ouvrier", sigChef:'Signature du chef de service technique',
+      generated:'Document généré par RESITECH',
+    } : {
+      title:'Maintenance Request Form', org:'RESITECH',
+      code:'Tracking code', submitted:'Submitted on', student:'Student',
+      room:'Room', pavilion:'Pavilion', residence:'Residence',
+      location:'Location', exactLocation:'Exact spot',
+      type:'Problem type', description:'Description', availability:'Availability',
+      resolvedOn:'Resolved on',
+      worker:'Assigned worker', remarque:'Worker remark',
+      sigWorker:'Worker Signature', sigChef:'Technical Service Manager Signature',
+      generated:'Document generated by RESITECH',
+    }
+
+    // Resolve assigned worker names from the workers list
+    const assignedIds = (() => { try { return JSON.parse(ticket.assigned_workers || '[]') } catch { return [] } })()
+    const assignedNames = assignedIds
+      .map(id => workers.find(w => String(w.id) === String(id)))
+      .filter(Boolean)
+      .map(w => [w.prenom, w.nom].filter(Boolean).join(' '))
+      .join(', ')
+
+    const field = (label, value) => value ? `
+      <div class="field">
+        <div class="field-label">${label}</div>
+        <div class="field-value">${value}</div>
+      </div>` : ''
+
+    const html = `<!DOCTYPE html><html dir="${dir}" lang="${lang}"><head><meta charset="UTF-8"/>
+    <title>${L.title} — ${ticket.tracking_code}</title>
+    <style>
+      @page{size:A4 portrait;margin:18mm 20mm}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;direction:${dir};color:#111;background:#fff}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:2px solid #1e293b;margin-bottom:16px}
+      .org-name{font-size:22px;font-weight:700;letter-spacing:1px;color:#1e293b}
+      .org-sub{font-size:8.5px;color:#64748b;margin-top:3px;letter-spacing:.5px;text-transform:uppercase}
+      .doc-title{background:#1e293b;color:#fff;text-align:center;padding:9px 0;font-size:13px;font-weight:600;letter-spacing:.5px;margin-bottom:18px}
+      .code-bar{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:18px;text-align:center}
+      .code-val{font-family:monospace;font-size:22px;font-weight:700;color:#1d4ed8;letter-spacing:3px}
+      .section{margin-bottom:14px}
+      .section-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .field{padding:8px 10px;background:#f8fafc;border-radius:5px;border:1px solid #f1f5f9}
+      .field.full{grid-column:1/-1}
+      .field-label{font-size:7.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:3px}
+      .field-value{font-size:10px;color:#1e293b;line-height:1.5}
+      .worker-box{background:#f0fdf4;border:1px solid #bbf7d0}
+      .worker-box .field-label{color:#16a34a}
+      .worker-box .field-value{color:#14532d;font-weight:600}
+      .description-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:10px;min-height:55px;font-size:10px;color:#374151;line-height:1.6}
+      .remarque-box{border:1px solid #e2e8f0;border-radius:5px;min-height:64px;padding:6px 10px;background:repeating-linear-gradient(to bottom,#fff,#fff 23px,#e9eef5 23px,#e9eef5 24px)}
+      .footer{margin-top:28px;display:flex;justify-content:space-between;gap:20px}
+      .sig-block{flex:1}
+      .sig-label{font-weight:600;font-size:9px;margin-bottom:38px;color:#1e293b}
+      .sig-line{border-top:1px solid #94a3b8;padding-top:4px;color:#94a3b8;font-size:8px}
+      .footer-note{text-align:center;margin-top:14px;font-size:7.5px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:6px}
+      @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body>
+    <div class="header">
+      <div>
+        <div class="org-name">${L.org}</div>
+        <div class="org-sub">${ticket.residence||''}</div>
+      </div>
+      <div style="text-align:${dir==='rtl'?'left':'right'};font-size:9px;color:#374151;line-height:2">
+        <div><strong>${today}</strong></div>
+      </div>
+    </div>
+    <div class="doc-title">${L.title}</div>
+
+    <div class="code-bar">
+      <div style="font-size:8px;color:#64748b;margin-bottom:3px">${L.code}</div>
+      <div class="code-val">${ticket.tracking_code}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${isAr?'معلومات الطالب':isFr?'Informations étudiant':'Student information'}</div>
+      <div class="grid">
+        ${field(L.student, ticket.nom)}
+        ${field(L.residence, ticket.residence||'—')}
+        ${field(L.room, ticket.chambre)}
+        ${field(L.pavilion, ticket.pavillon)}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${isAr?'تفاصيل الطلب':isFr?'Détails de la demande':'Request details'}</div>
+      <div class="grid">
+        ${field(L.type, ticket.problem_type)}
+        ${field(L.location, ticket.location)}
+        ${field(L.exactLocation, ticket.exact_location)}
+        ${field(L.submitted, new Date(ticket.created_at).toLocaleDateString(locale,{year:'numeric',month:'long',day:'numeric'}))}
+        ${ticket.availability ? field(L.availability, ticket.availability) : ''}
+        ${ticket.resolved_at ? field(L.resolvedOn, new Date(ticket.resolved_at).toLocaleDateString(locale,{year:'numeric',month:'long',day:'numeric'})) : ''}
+        ${assignedNames ? `<div class="field full worker-box"><div class="field-label">${L.worker}</div><div class="field-value">${assignedNames}</div></div>` : ''}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${L.description}</div>
+      <div class="description-box">${ticket.description||''}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${L.remarque}</div>
+      <div class="remarque-box"></div>
+    </div>
+
+    <div class="footer">
+      <div class="sig-block" style="text-align:${dir==='rtl'?'right':'left'}">
+        <div class="sig-label">${L.sigWorker}</div>
+        <div class="sig-line">${L.sigWorker}</div>
+      </div>
+      <div class="sig-block" style="text-align:${dir==='rtl'?'left':'right'}">
+        <div class="sig-label">${L.sigChef}</div>
+        <div class="sig-line">${L.sigChef}</div>
+      </div>
+    </div>
+    <div class="footer-note">${L.generated} · ${today}</div>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    const w=window.open('','_blank');w.document.write(html);w.document.close()
   }
 
   const processed=useMemo(()=>tickets.map(t=>({...t,ep:getEffectivePriority(t,settings),escalated:getEffectivePriority(t,settings)!==t.priorite})),[tickets,settings])
@@ -1973,7 +2216,8 @@ export default function Dashboard({admin,onLogout}){
   const inp=tickets.filter(t=>t.statut==='En cours').length,resN=tickets.filter(t=>t.statut==='Résolu').length
   const urg=processed.filter(t=>t.ep==='High'&&t.statut!=='Résolu').length
   const cols=settings.visibleCols
-  const unread=tickets.filter(t=>new Date(t.created_at).getTime()>lastRead).length
+  const unread=adminNotifs.length
+  const unreadCodes=new Set(adminNotifs.map(n=>n.tracking_code))
   const unreadMessages=messages.filter(m=>m.receiver_id===admin.id&&!m.is_read).length
 
   const sidebarW = sidebarCollapsed ? '4rem' : '14rem'
@@ -1985,7 +2229,7 @@ export default function Dashboard({admin,onLogout}){
     {/* Modals */}
     {showNewTicket&&(<NewTicketModal txt={txt} lang={lang} workers={workers} onClose={()=>setShowNewTicket(false)} onCreated={handleTicketCreated} addToast={addToast} residenceId={admin.residence_id}/>)}
     {editTicket&&(<EditTicketModal ticket={editTicket} txt={txt} lang={lang} workers={workers} onClose={()=>setEditTicket(null)} onSaved={handleTicketSaved} onDeleted={handleTicketDeleted} addToast={addToast}/>)}
-    {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} isReadOnly={isReadOnly} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }}/>)}
+    {selTicket&&!editTicket&&(<TicketModal ticket={selTicket} ep={getEffectivePriority(selTicket,settings)} txt={txt} lang={lang} feedbacks={feedbacks} workers={workers} onClose={()=>setSelTicket(null)} onStatus={updateStatus} onSave={saveNote} updating={updating} isReadOnly={isReadOnly} onEdit={()=>{ setEditTicket(selTicket); setSelTicket(null) }} onPrint={()=>handlePrintSingle(selTicket)}/>)}
     {showAddWorker&&<AddWorkerModal txt={txt} lang={lang} admin={admin} residenceName={workers[0]?.residence||''} onClose={()=>setShowAddWorker(false)} onAdded={()=>{ supabase.from('workers').select('*').eq('residence_id',admin.residence_id).then(({data})=>{if(data)setWorkers(data)}) }}/>}
     {selectedWorker&&<WorkerDrawer worker={selectedWorker} tickets={tickets} txt={txt} lang={lang} onClose={()=>setSelectedWorker(null)}/>}
     {showCompose&&<ComposeModal admin={admin} allAdmins={allAdmins} lang={lang} txt={txt} defaultReceiverId={replyTo} replyToMessageId={replyToMsgId} onClose={()=>{setShowCompose(false);setReplyTo(null);setReplyToMsgId(null)}} onSent={msg=>setMessages(prev=>[msg,...prev])}/>}
@@ -2180,7 +2424,7 @@ export default function Dashboard({admin,onLogout}){
                           {cols.room    &&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
                           {cols.pavilion&&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
                           {cols.type    &&<td className="p-3 text-gray-600 dark:text-slate-300 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
-                          {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span></td>}
+                          {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.ep==='High'&&<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span>}</td>}
                           {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
                           {cols.date    &&<td className="p-3 text-gray-400 dark:text-slate-500 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
                           <td className="p-3">
@@ -2364,7 +2608,7 @@ export default function Dashboard({admin,onLogout}){
             {tickets.length===0
               ?<p className="text-center text-gray-400 dark:text-slate-500 text-sm py-8">{txt.noNotifs}</p>
               :[...tickets].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,50).map(t=>{
-                const isNew=new Date(t.created_at).getTime()>lastRead
+                const isNew=unreadCodes.has(t.tracking_code)
                 return(
                   <button key={t.id} onClick={()=>{setSelTicket(t);setActiveView('tickets')}}
                     className={`w-full text-left px-5 py-4 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${isNew?'bg-blue-50/40 dark:bg-blue-900/10':''}`}>
@@ -2415,12 +2659,10 @@ export default function Dashboard({admin,onLogout}){
     {/* ── Mobile bottom nav ── */}
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-slate-900 border-t border-slate-800 flex md:hidden" dir="ltr">
       {[
-        {id:'tickets',       icon:IC.tickets,   label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
-        {id:'analytics',     icon:IC.analytics, label:lang==='ar'?'إحصاء':lang==='fr'?'Stats':'Stats'},
-        {id:'workers',       icon:IC.workers,   label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
-        {id:'notifications', icon:IC.bell,      label:lang==='ar'?'إشعارات':lang==='fr'?'Notifs':'Notifs', badge:unread||null},
-        {id:'messages',      icon:IC.mail,      label:lang==='ar'?'رسائل':lang==='fr'?'Messages':'Msgs', badge:unreadMessages||null},
-        ...(!isReadOnly?[{id:'reports', icon:IC.reports, label:lang==='ar'?'تقارير':lang==='fr'?'Rapports':'Reports'}]:[]),
+        {id:'tickets',       icon:IC.tickets, label:lang==='ar'?'الطلبات':lang==='fr'?'Tickets':'Tickets'},
+        {id:'workers',       icon:IC.workers, label:lang==='ar'?'العمال':lang==='fr'?'Ouvriers':'Workers'},
+        {id:'notifications', icon:IC.bell,    label:lang==='ar'?'إشعارات':lang==='fr'?'Notifs':'Notifs', badge:unread||null},
+        {id:'messages',      icon:IC.mail,    label:lang==='ar'?'رسائل':lang==='fr'?'Messages':'Msgs',   badge:unreadMessages||null},
       ].map(item=>(
         <button key={item.id} onClick={()=>setActiveView(item.id)}
           className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-colors relative ${activeView===item.id?'text-blue-400':'text-slate-500'}`}>
