@@ -846,7 +846,7 @@ export default function TicketForm({ student, onLogout, lang, setLang }) {
 
   // ── Main form ──────────────────────────────────────────────────────────────
   const needsAvailability = NEEDS_AVAILABILITY.includes(location)
-  const isHighPriority    = priority === 'High'
+  const isHighPriority    = priority === 'Urgent'
   const timeError         = availabilityStart && availabilityEnd && availabilityEnd <= availabilityStart
 
   const iosHintModal = showIosHint && (

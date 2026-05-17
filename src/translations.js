@@ -42,9 +42,9 @@ const translations = {
     },
 
     priority: 'Priority',
-    priorities: { High: 'High', Medium: 'Medium', Low: 'Low' },
+    priorities: { Urgent: 'Urgent', Regular: 'Regular' },
     priorityAuto: 'Auto-assigned',
-    priorityHighNote: 'High priority — night shift available if needed',
+    priorityHighNote: 'Urgent — night shift available if needed',
 
     description: 'Description',
     descriptionPlaceholder: 'Describe the problem clearly...',
@@ -140,9 +140,9 @@ const translations = {
     },
 
     priority: 'Priorité',
-    priorities: { High: 'Haute', Medium: 'Moyenne', Low: 'Faible' },
+    priorities: { Urgent: 'Urgent', Regular: 'Normal' },
     priorityAuto: 'Assignée automatiquement',
-    priorityHighNote: 'Haute priorité — équipe de nuit disponible si nécessaire',
+    priorityHighNote: 'Urgent — équipe de nuit disponible si nécessaire',
 
     description: 'Description',
     descriptionPlaceholder: 'Décrivez le problème clairement...',
@@ -238,9 +238,9 @@ const translations = {
     },
 
     priority: 'الأولوية',
-    priorities: { High: 'عالية', Medium: 'متوسطة', Low: 'منخفضة' },
+    priorities: { Urgent: 'عاجل', Regular: 'عادي' },
     priorityAuto: 'تُحدد تلقائياً',
-    priorityHighNote: 'أولوية عالية — الوردية الليلية متاحة عند الضرورة',
+    priorityHighNote: 'عاجل — الوردية الليلية متاحة عند الضرورة',
 
     description: 'الوصف',
     descriptionPlaceholder: 'اشرح المشكلة بوضوح...',

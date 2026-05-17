@@ -39,10 +39,7 @@ export default function WorkerLogin({ onLogin, onBack }) {
     setLoading(true)
 
     const { data: worker, error: dbErr } = await supabase
-      .from('workers')
-      .select('*')
-      .eq('username', username.trim().toLowerCase())
-      .eq('password', password.trim())
+      .rpc('verify_worker', { p_username: username.trim().toLowerCase(), p_password: password.trim() })
       .single()
 
     if (dbErr || !worker) {

@@ -57,9 +57,8 @@ export const SM = {
 }
 
 export const PrioM = {
-  High:   { en: 'High',   fr: 'Haute',    ar: 'عالية' },
-  Medium: { en: 'Medium', fr: 'Moyenne',  ar: 'متوسطة' },
-  Low:    { en: 'Low',    fr: 'Faible',   ar: 'منخفضة' },
+  Urgent:  { en: 'Urgent',  fr: 'Urgent',  ar: 'عاجل' },
+  Regular: { en: 'Regular', fr: 'Normal',  ar: 'عادي' },
 }
 
 export const ALL_PROBLEM_TYPES = [

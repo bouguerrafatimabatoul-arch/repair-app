@@ -61,11 +61,10 @@ function getEffectivePriority(ticket, settings) {
   if (ticket.statut === 'Résolu') return ticket.priorite
   const ageH = (Date.now() - new Date(ticket.created_at).getTime()) / 3_600_000
   let p = ticket.priorite
-  if (p === 'Low'    && ageH >= settings.escalateLowToMedium)  p = 'Medium'
-  if (p === 'Medium' && ageH >= settings.escalateMediumToHigh) p = 'High'
+  if (p === 'Regular' && ageH >= settings.escalateRegularToUrgent) p = 'Urgent'
   return p
 }
-function priorityRank(p) { return p==='High'?0:p==='Medium'?1:2 }
+function priorityRank(p) { return p==='Urgent'?0:1 }
 
 
 // ─── Translations ──────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ const T = {
     submittedOn:'Submitted',resolvedOn:'Resolved',exactLocation:'Exact spot',
     adminNote:'Admin note',adminNotePlaceholder:'Note for the student…',saveNote:'Save',
     assignWorkers:'Assign workers',noWorkers:'No workers available',toolsUsed:'Tools used',toolsUsedPlaceholder:'e.g. Drill, Wrench, Wire 2.5mm…',
-    priorities:{High:'High',Medium:'Medium',Low:'Low'},
+    priorities:{Urgent:'Urgent',Regular:'Regular'},
     statuses:{'En attente':'Pending','En cours':'In Progress','Résolu':'Resolved'},
     logout:'Logout',notifications:'Notifications',noNotifs:'No notifications',
     markRead:'Mark all read',newTicket:'New Ticket',
@@ -90,7 +89,7 @@ const T = {
     escalated:'Escalated',originalPriority:'Original',
     settings:'Settings',settingsTitle:'Settings',
     escalationTitle:'Auto-escalation thresholds',
-    escalateLowLabel:'Low → Medium after (hours)',escalateMediumLabel:'Medium → High after (hours)',
+    escalateRegularLabel:'Regular → Urgent after (hours)',
     tableColsTitle:'Visible columns',ticketsPerPageLabel:'Tickets per page',
     save:'Save settings',saved:'Saved!',
     printAll:'Print all',printFiltered:'Print filtered',printTicket:'Print ticket',
@@ -134,7 +133,7 @@ const T = {
     submittedOn:'Soumis',resolvedOn:'Résolu',exactLocation:'Endroit précis',
     adminNote:'Note admin',adminNotePlaceholder:"Note pour l'étudiant…",saveNote:'Enregistrer',
     assignWorkers:'Assigner des ouvriers',noWorkers:'Aucun ouvrier',toolsUsed:'Outils utilisés',toolsUsedPlaceholder:'ex: Perceuse, Clé, Câble 2.5mm…',
-    priorities:{High:'Haute',Medium:'Moyenne',Low:'Faible'},
+    priorities:{Urgent:'Urgent',Regular:'Normal'},
     statuses:{'En attente':'En attente','En cours':'En cours','Résolu':'Résolu'},
     logout:'Déconnexion',notifications:'Notifications',noNotifs:'Aucune notification',
     markRead:'Tout marquer lu',newTicket:'Nouveau ticket',
@@ -146,7 +145,7 @@ const T = {
     escalated:'Escaladé',originalPriority:'Originale',
     settings:'Paramètres',settingsTitle:'Paramètres',
     escalationTitle:"Seuils d'escalade automatique",
-    escalateLowLabel:'Faible → Moyenne après (heures)',escalateMediumLabel:'Moyenne → Haute après (heures)',
+    escalateRegularLabel:'Normal → Urgent après (heures)',
     tableColsTitle:'Colonnes visibles',ticketsPerPageLabel:'Tickets par page',
     save:'Enregistrer',saved:'Sauvegardé !',
     printAll:'Imprimer tout',printFiltered:'Imprimer filtré',printTicket:'Imprimer le ticket',
@@ -188,7 +187,7 @@ const T = {
     submittedOn:'تاريخ التقديم',resolvedOn:'تاريخ الحل',exactLocation:'المكان الدقيق',
     adminNote:'ملاحظة الإدارة',adminNotePlaceholder:'ملاحظة للطالب…',saveNote:'حفظ',
     assignWorkers:'تعيين عمال',noWorkers:'لا يوجد عمال',toolsUsed:'الأدوات المستخدمة',toolsUsedPlaceholder:'مثال: مثقاب، مفتاح ربط، سلك 2.5مم…',
-    priorities:{High:'عالية',Medium:'متوسطة',Low:'منخفضة'},
+    priorities:{Urgent:'عاجل',Regular:'عادي'},
     statuses:{'En attente':'قيد الانتظار','En cours':'جارٍ','Résolu':'تم الحل'},
     logout:'تسجيل الخروج',notifications:'الإشعارات',noNotifs:'لا توجد إشعارات',
     markRead:'تحديد الكل كمقروء',newTicket:'طلب جديد',
@@ -200,7 +199,7 @@ const T = {
     escalated:'مُصعَّد',originalPriority:'الأصلية',
     settings:'الإعدادات',settingsTitle:'الإعدادات',
     escalationTitle:'حدود تصعيد الأولوية التلقائي',
-    escalateLowLabel:'منخفضة → متوسطة بعد (ساعة)',escalateMediumLabel:'متوسطة → عالية بعد (ساعة)',
+    escalateRegularLabel:'عادي → عاجل بعد (ساعة)',
     tableColsTitle:'الأعمدة المرئية',ticketsPerPageLabel:'طلبات لكل صفحة',
     save:'حفظ الإعدادات',saved:'تم الحفظ!',
     printAll:'طباعة الكل',printFiltered:'طباعة المفلتر',printTicket:'طباعة الطلب',
@@ -238,12 +237,12 @@ const T = {
 
 const LANGS = [{code:'en',label:'EN'},{code:'fr',label:'FR'},{code:'ar',label:'ع'}]
 const DEFAULT_SETTINGS = {
-  escalateLowToMedium:48, escalateMediumToHigh:24, ticketsPerPage:25,
+  escalateRegularToUrgent:24, ticketsPerPage:25,
   visibleCols:{code:true,student:true,residence:true,room:true,pavilion:true,type:true,priority:true,status:true,date:true},
 }
 const SC = {'En attente':'bg-gray-100 text-gray-600','En cours':'bg-blue-100 text-blue-700','Résolu':'bg-green-100 text-green-700'}
-const PC = {High:'bg-red-100 text-red-700',Medium:'bg-yellow-100 text-yellow-700',Low:'bg-green-100 text-green-700'}
-const PB = {High:'border-l-[3px] border-red-400',Medium:'border-l-[3px] border-yellow-400',Low:'border-l-[3px] border-green-400'}
+const PC = {Urgent:'bg-red-100 text-red-700',Regular:'bg-gray-100 text-gray-600'}
+const PB = {Urgent:'border-l-[3px] border-red-400',Regular:'border-l-[3px] border-gray-300'}
 const parseImages = url => {
   if (!url) return []
   try { const p = JSON.parse(url); return Array.isArray(p) ? p : [url] } catch { return [url] }
@@ -373,7 +372,7 @@ function WorkerPicker({workers,selected,onChange,txt}){
 function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast, residenceId }) {
   const [form, setForm] = useState({
     nom: '', chambre: '', pavillon: '', location: 'Room',
-    exact_location: '', problem_type: 'Electricity', priorite: 'High',
+    exact_location: '', problem_type: 'Electricity', priorite: 'Regular',
     description: '', availability: '', statut: 'En attente',
   })
   const [saving, setSaving] = useState(false)
@@ -481,7 +480,7 @@ function NewTicketModal({ txt, lang, workers, onClose, onCreated, addToast, resi
             <div>
               <label className={labelCls}>{txt.newTicketPriority}</label>
               <select className={`${inputCls} ${PC[form.priorite]} border-0 font-medium`} value={form.priorite} onChange={e=>set('priorite',e.target.value)}>
-                {['High','Medium','Low'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
+                {['Urgent','Regular'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
               </select>
             </div>
           </div>
@@ -538,7 +537,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
     location:       ticket.location       || 'Room',
     exact_location: ticket.exact_location || '',
     problem_type:   ticket.problem_type   || 'Electricity',
-    priorite:       ticket.priorite       || 'Medium',
+    priorite:       ticket.priorite       || 'Regular',
     description:    ticket.description    || '',
     availability:   ticket.availability   || '',
     statut:         ticket.statut         || 'En attente',
@@ -587,7 +586,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
       await supabase.from('notifications').insert([{
         ticket_id: ticket.id, tracking_code: ticket.tracking_code, nom: ticket.nom,
         message_student: `Your ticket ${ticket.tracking_code} is now: ${form.statut}`,
-        type: 'status_update', read_by_admin: true,
+        type: 'status_update', read_by_admin: true, read_by_student: false,
       }])
     }
     addToast({ id: Date.now(), title: txt.editTicketSuccess, body: ticket.tracking_code })
@@ -666,7 +665,7 @@ function EditTicketModal({ ticket, txt, lang, workers, onClose, onSaved, onDelet
             <div>
               <label className={labelCls}>{txt.priority}</label>
               <select className={`${inputCls} font-medium`} value={form.priorite} onChange={e=>set('priorite',e.target.value)}>
-                {['High','Medium','Low'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
+                {['Urgent','Regular'].map(p=><option key={p} value={p}>{txt.priorities[p]}</option>)}
               </select>
             </div>
           </div>
@@ -780,7 +779,7 @@ function TicketModal({ticket,ep,txt,lang,feedbacks,workers,onClose,onStatus,onSa
           </div>
         </div>
         <div className="px-6 py-5 space-y-5">
-          {ep==='High'&&(
+          {ep==='Urgent'&&(
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs px-3 py-1 rounded-full font-medium ${PC[ep]}`}>⚡ {txt.priorities[ep]}</span>
             {escalated&&<span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-full border border-orange-200">↑ {txt.escalated} ({txt.originalPriority}: {txt.priorities[ticket.priorite]})</span>}
@@ -875,11 +874,11 @@ function AddWorkerModal({ txt, lang, admin, residenceName, onClose, onAdded }) {
     const ins = {
       nom: form.nom.trim(), prenom: form.prenom.trim(),
       grade: form.grade.trim()||'عامل صيانة', job_title: form.jobTitle.trim()||'عامل صيانة',
-      date_of_birth: form.dob, username, password,
+      date_of_birth: form.dob, username,
       residence_id: admin.residence_id, residence: res,
     }
     if (form.phone) ins.phone = form.phone.trim()
-    const { error:err } = await supabase.from('workers').insert([ins])
+    const { error:err } = await supabase.rpc('create_worker', { worker_data: ins, p_password: password })
     setAdding(false)
     if (err) { setError(err.message); return }
     setCredentials({ username, password })
@@ -1014,8 +1013,7 @@ function SettingsView({ settings, onSave, txt, lang }) {
         </div>
         <div className="p-5 space-y-5">
           {[
-            {key:'escalateLowToMedium',  label:txt.escalateLowLabel,   color:'#f59e0b'},
-            {key:'escalateMediumToHigh', label:txt.escalateMediumLabel, color:'#ef4444'},
+            {key:'escalateRegularToUrgent', label:txt.escalateRegularLabel, color:'#ef4444'},
           ].map(f=>(
             <div key={f.key}>
               <div className="flex justify-between items-center mb-2">
@@ -1096,7 +1094,7 @@ function FilterBar({tickets,filters,setFilters,txt,lang,open,setOpen}){
           <div>
             <label className="block text-xs text-gray-400 dark:text-slate-500 mb-1">⚡ {txt.filterPriority}</label>
             <div className="flex gap-1">
-              {['High','Medium','Low'].map(p=>(
+              {['Urgent','Regular'].map(p=>(
                 <button key={p} onClick={()=>chip('priority',p)}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filters.priority===p?PC[p]+' border-transparent font-medium':'border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                   {txt.priorities[p]}
@@ -1142,22 +1140,78 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
   const byLoc=Object.entries(tickets.reduce((a,t)=>{const k=tf(t.location,lang,LM);a[k]=(a[k]||0)+1;return a},{})).map(([l,c])=>({label:l,count:c})).sort((a,b)=>b.count-a.count)
   const byRoom=Object.entries(tickets.reduce((a,t)=>{const k=`${t.chambre}/${t.pavillon}`;a[k]=(a[k]||0)+1;return a},{})).map(([l,c])=>({label:l,count:c})).sort((a,b)=>b.count-a.count).slice(0,6)
   const maxR=Math.max(...byRoom.map(d=>d.count),1)
-  const prioS=[{value:tickets.filter(t=>getEffectivePriority(t,settings)==='High').length,color:'#ef4444',label:txt.priorities.High},{value:tickets.filter(t=>getEffectivePriority(t,settings)==='Medium').length,color:'#f59e0b',label:txt.priorities.Medium},{value:tickets.filter(t=>getEffectivePriority(t,settings)==='Low').length,color:'#22c55e',label:txt.priorities.Low}]
+  const prioS=[{value:tickets.filter(t=>getEffectivePriority(t,settings)==='Urgent').length,color:'#ef4444',label:txt.priorities.Urgent},{value:tickets.filter(t=>getEffectivePriority(t,settings)==='Regular').length,color:'#6b7280',label:txt.priorities.Regular}]
   const statS=[{value:tickets.filter(t=>t.statut==='En attente').length,color:'#9ca3af',label:txt.statuses['En attente']},{value:tickets.filter(t=>t.statut==='En cours').length,color:'#3b82f6',label:txt.statuses['En cours']},{value:tickets.filter(t=>t.statut==='Résolu').length,color:'#22c55e',label:txt.statuses['Résolu']}]
   const avg=feedbacks.length?(feedbacks.reduce((s,f)=>s+(f.rating||0),0)/feedbacks.length).toFixed(1):null
   const tc=['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#14b8a6','#ef4444','#a3e635']
+  const resolvedWithTime=tickets.filter(t=>t.statut==='Résolu'&&t.created_at&&t.resolved_at)
+  const mttrHours=resolvedWithTime.length
+    ?resolvedWithTime.reduce((s,t)=>s+(new Date(t.resolved_at)-new Date(t.created_at)),0)/resolvedWithTime.length/3600000
+    :null
+  const mttrLabel=mttrHours===null?'—':mttrHours<1?`${Math.round(mttrHours*60)}m`:mttrHours<24?`${mttrHours.toFixed(1)}h`:`${(mttrHours/24).toFixed(1)}d`
+  const mttrTxt={en:{label:'Avg. Repair Time',sub:'Mean Time to Repair'},fr:{label:'Temps moyen de réparation',sub:'MTTR'},ar:{label:'متوسط وقت الإصلاح',sub:'MTTR'}}[lang]||{label:'Avg. Repair Time',sub:'MTTR'}
+
+  const exportCharts=()=>{
+    const node=document.getElementById('resitech-analytics-grid')
+    if(!node) return
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>RESITECH Analytics — ${new Date().toLocaleDateString()}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @page{size:A4 landscape;margin:15mm}
+  body{font-family:system-ui,sans-serif;background:#fff;padding:12px}
+  h2{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:4px}
+  p.sub{font-size:11px;color:#94a3b8;margin-bottom:16px}
+  .no-print{display:none}
+</style>
+</head><body>
+<h2>RESITECH — Analytics Report</h2>
+<p class="sub">${new Date().toLocaleString()}</p>
+<div class="grid grid-cols-3 gap-4">${node.innerHTML}</div>
+<script>window.onload=()=>{window.print();window.close()}<\/script>
+</body></html>`
+    const w=window.open('','_blank');w.document.write(html);w.document.close()
+  }
+
   return(
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <div className="col-span-full flex justify-end mb-1">
+        <button onClick={exportCharts}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all hover:shadow-sm"
+          style={{background:'#eff6ff',color:'#2563eb',border:'1px solid #bfdbfe'}}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:15,height:15}}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          {lang==='ar'?'طباعة التقارير':lang==='fr'?'Imprimer les graphiques':'Print Charts'}
+        </button>
+      </div>
+      <div id="resitech-analytics-grid" className="col-span-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       <div className="bg-white rounded-xl border shadow-sm p-5 md:col-span-2">
         <div className="flex justify-between items-start mb-3">
           <div><p className="text-xs text-gray-400 uppercase tracking-wide">{txt.weeklyTrend}</p><p className="text-2xl font-semibold text-gray-800 mt-0.5">{wd.reduce((s,v)=>s+v,0)}</p><p className="text-xs text-gray-400">tickets</p></div>
           <div className="flex gap-4 text-right">
             <div><p className="text-2xl font-bold text-blue-500">{resRate}%</p><p className="text-xs text-gray-400">{txt.resolutionRate}</p></div>
+            <div><p className="text-2xl font-bold text-purple-500">{mttrLabel}</p><p className="text-xs text-gray-400">{mttrTxt.sub}</p></div>
             {escalated>0&&<div><p className="text-2xl font-bold text-orange-500">{escalated}</p><p className="text-xs text-gray-400">{txt.escalated}</p></div>}
           </div>
         </div>
         <Spark data={wd} color="#3b82f6" h={48}/>
         <div className="flex justify-between mt-1">{wl.map((l,i)=><span key={i} className="text-xs text-gray-300">{l}</span>)}</div>
+      </div>
+      <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-center" style={{borderTop:'3px solid #8b5cf6'}}>
+        <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{mttrTxt.label}</p>
+        <p className="text-5xl font-bold text-purple-500 my-2">{mttrLabel}</p>
+        <p className="text-xs text-gray-400">{mttrTxt.sub} · {resolvedWithTime.length} {lang==='ar'?'طلب محلول':lang==='fr'?'tickets résolus':'resolved tickets'}</p>
+        {mttrHours!==null&&(
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>{lang==='ar'?'أسرع من 24س':lang==='fr'?'< 24h':'< 24h'}</span>
+              <span className="font-medium text-gray-600">{resolvedWithTime.filter(t=>(new Date(t.resolved_at)-new Date(t.created_at))/3600000<24).length}</span>
+            </div>
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>{lang==='ar'?'أكثر من 24س':lang==='fr'?'> 24h':'> 24h'}</span>
+              <span className="font-medium text-gray-600">{resolvedWithTime.filter(t=>(new Date(t.resolved_at)-new Date(t.created_at))/3600000>=24).length}</span>
+            </div>
+          </div>
+        )}
       </div>
       <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col">
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{txt.priorityBreakdown}</p>
@@ -1200,6 +1254,7 @@ function Analytics({tickets,feedbacks,txt,lang,settings}){
             </div>
           )})}
         </>):<p className="text-gray-400 text-sm">{txt.noFeedback}</p>}
+      </div>
       </div>
     </div>
   )
@@ -1323,7 +1378,7 @@ function WorkerDrawer({worker, tickets, txt, lang, onClose}){
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-xs text-blue-500 shrink-0">{t.tracking_code}</span>
                       <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span>
-                      {(t.ep||t.priorite)==='High'&&<span className={`px-1.5 py-0.5 rounded text-xs font-medium ${PC[t.ep||t.priorite]}`}>{txt.priorities[t.ep||t.priorite]}</span>}
+                      {(t.ep||t.priorite)==='Urgent'&&<span className={`px-1.5 py-0.5 rounded text-xs font-medium ${PC[t.ep||t.priorite]}`}>{txt.priorities[t.ep||t.priorite]}</span>}
                     </div>
                     <p className="text-sm font-medium text-gray-700 dark:text-slate-200 truncate">{t.nom}</p>
                     <div className="flex items-center justify-between mt-0.5">
@@ -1382,7 +1437,7 @@ function ReportsView({ adminId, tickets, workers, lang, txt }) {
   const fmtDate = (d) => new Date(d).toLocaleDateString(lang==='ar'?'ar-DZ':lang==='fr'?'fr-FR':'en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
 
   const statusColor = { 'En attente':'#f59e0b', 'En cours':'#3b82f6', 'Résolu':'#10b981' }
-  const priorityColor = { 'Urgent':'#ef4444', 'Haute':'#f97316', 'Normale':'#6b7280', 'Basse':'#94a3b8' }
+  const priorityColor = { 'Urgent':'#ef4444', 'Regular':'#6b7280' }
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/></div>
 
@@ -1897,7 +1952,7 @@ export default function Dashboard({admin,onLogout}){
     const username=`${normalizeForUsername(res)}_${normalizeForUsername(credWorker['nom'])}_${normalizeForUsername(credWorker['prenom']||'')}`
     const [y,m,d]=credDob.split('-')
     const password=`${d}${m}${y}`
-    const {error}=await supabase.from('workers').update({username,password,date_of_birth:credDob}).eq('id',credWorker['id'])
+    const {error}=await supabase.rpc('reset_worker_credentials',{p_id:credWorker['id'],p_username:username,p_password:password,p_dob:credDob})
     if(!error){
       setWorkers(prev=>prev.map(w=>w['id']===credWorker['id']?{...w,username,password,date_of_birth:credDob}:w))
       setCredWorker(null);setCredDob('')
@@ -2214,7 +2269,7 @@ export default function Dashboard({admin,onLogout}){
 
   const total=tickets.length,pend=tickets.filter(t=>t.statut==='En attente').length
   const inp=tickets.filter(t=>t.statut==='En cours').length,resN=tickets.filter(t=>t.statut==='Résolu').length
-  const urg=processed.filter(t=>t.ep==='High'&&t.statut!=='Résolu').length
+  const urg=processed.filter(t=>t.ep==='Urgent'&&t.statut!=='Résolu').length
   const cols=settings.visibleCols
   const unread=adminNotifs.length
   const unreadCodes=new Set(adminNotifs.map(n=>n.tracking_code))
@@ -2344,7 +2399,7 @@ export default function Dashboard({admin,onLogout}){
             {l:txt.pending,        v:pend,  accent:'#f59e0b', text:'text-amber-600', f:{status:'En attente',priority:''}},
             {l:txt.inProgress,     v:inp,   accent:'#3b82f6', text:'text-blue-600',  f:{status:'En cours',priority:''}},
             {l:txt.resolved,       v:resN,  accent:'#10b981', text:'text-emerald-600',f:{status:'Résolu',priority:''}},
-            {l:txt.urgent, v:urg,   accent:'#ef4444', text:'text-red-600',   f:{status:'',priority:'High'}},
+            {l:txt.urgent, v:urg,   accent:'#ef4444', text:'text-red-600',   f:{status:'',priority:'Urgent'}},
           ].map(s=>(
             <button key={s.l} onClick={()=>setFilters(f=>({...f,...s.f}))}
               className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-4 text-left shadow-sm hover:shadow-md transition-all"
@@ -2393,7 +2448,7 @@ export default function Dashboard({admin,onLogout}){
                       <div className="flex flex-col items-end gap-1.5 shrink-0">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span>
                         <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(t.created_at).toLocaleDateString()}</span>
-                        {t.ep==='High'&&<span className="text-xs font-bold text-red-600 border border-red-200 rounded px-1">!</span>}
+                        {t.ep==='Urgent'&&<span className="text-xs font-bold text-red-600 border border-red-200 rounded px-1">!</span>}
                       </div>
                     </button>
                   ))}
@@ -2424,7 +2479,7 @@ export default function Dashboard({admin,onLogout}){
                           {cols.room    &&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.chambre}</td>}
                           {cols.pavilion&&<td className="p-3 text-gray-500 dark:text-slate-400 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.pavillon}</td>}
                           {cols.type    &&<td className="p-3 text-gray-600 dark:text-slate-300 cursor-pointer" onClick={()=>setSelTicket(t)}>{tf(t.problem_type,lang,PM)}</td>}
-                          {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.ep==='High'&&<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span>}</td>}
+                          {cols.priority&&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}>{t.ep==='Urgent'&&<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PC[t.ep]}`}>{txt.priorities[t.ep]}</span>}</td>}
                           {cols.status  &&<td className="p-3 cursor-pointer" onClick={()=>setSelTicket(t)}><span className={`px-2 py-0.5 rounded-full text-xs ${SC[t.statut]}`}>{txt.statuses[t.statut]}</span></td>}
                           {cols.date    &&<td className="p-3 text-gray-400 dark:text-slate-500 text-xs whitespace-nowrap cursor-pointer" onClick={()=>setSelTicket(t)}>{new Date(t.created_at).toLocaleDateString()}</td>}
                           <td className="p-3">

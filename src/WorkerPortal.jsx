@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 
-const PRIORITY_ORDER  = { 'Urgent': 0, 'Haute': 1, 'Normale': 2, 'Basse': 3 }
-const PRIORITY_COLORS = { 'Urgent': '#ef4444', 'Haute': '#f97316', 'Normale': '#3b82f6', 'Basse': '#10b981' }
+const PRIORITY_ORDER  = { 'Urgent': 0, 'Regular': 1 }
+const PRIORITY_COLORS = { 'Urgent': '#ef4444', 'Regular': '#6b7280' }
 const STATUS_COLORS   = {
   'En attente': { bg: '#fef9ec', text: '#92400e', dot: '#f59e0b', border: '#fde68a' },
   'En cours':   { bg: '#eff6ff', text: '#1e40af', dot: '#3b82f6', border: '#bfdbfe' },

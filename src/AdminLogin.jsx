@@ -76,10 +76,7 @@ export default function AdminLogin({ onLogin, onBack }) {
     setLoading(true)
 
     const { data, error } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('username', username.trim())
-      .eq('password', password.trim())
+      .rpc('verify_admin', { p_username: username.trim(), p_password: password.trim() })
       .single()
 
     setLoading(false)

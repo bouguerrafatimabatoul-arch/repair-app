@@ -1,5 +1,5 @@
 export function assignPriority(_problemType) {
-  return 'Medium'
+  return 'Regular'
 }
 
 export function generateTrackingCode() {
